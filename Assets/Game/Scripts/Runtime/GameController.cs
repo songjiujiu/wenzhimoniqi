@@ -128,7 +128,7 @@ namespace Mosquito.Runtime
             Game = new Simulation(settings == null ? null : settings.simulation, unchecked((ulong)DateTime.UtcNow.Ticks));
             Selected = Weapon.Hand; PendingTicks = 0; remainder = 0; lastMilestone = 0;
             InMenu = Paused = Recovering = SettingsOpen = false; queuedCommand = null; holdArmed = false;
-            room.ResetVisuals(); Status = "母蚊每秒产卵，虫卵半秒后孵化。"; lastRealTime = Time.realtimeSinceStartupAsDouble;
+            room.ResetVisuals(); Status = "母蚊每 2 秒产卵，虫卵 1 秒后孵化。"; lastRealTime = Time.realtimeSinceStartupAsDouble;
             Save();
         }
         public void ContinueRun()
@@ -136,11 +136,14 @@ namespace Mosquito.Runtime
             if (!CanContinue) return;
             try
             {
-                Game = Simulation.Restore(Profile.run); PendingTicks = Profile.pendingCatchupTicks;
+                Game = Simulation.Restore(Profile.run);
+                bool pacingUpdated = Game.UpgradeReproductionPacing();
+                PendingTicks = Profile.pendingCatchupTicks;
                 Selected = (Weapon)Profile.selectedWeapon; remainder = 0;
                 InMenu = Paused = SettingsOpen = false; Recovering = PendingTicks > 0;
                 holdArmed = false; queuedCommand = null; room.ResetVisuals();
                 Status = Recovering ? "正在恢复已积欠的进度…" : "已恢复存档；离线期间没有繁殖。";
+                if (pacingUpdated) { Status += " 繁殖速度已调慢。"; Save(); }
             }
             catch (Exception e) { Status = "无法恢复此存档：" + e.Message; }
         }

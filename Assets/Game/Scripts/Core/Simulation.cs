@@ -69,6 +69,22 @@ namespace Mosquito.Core
             for (int i = 0; i < 20; i++) recentLays.Enqueue(BigInteger.Zero);
         }
 
+        public bool UpgradeReproductionPacing()
+        {
+            if (Config.layIntervalTicks != 20) return false;
+            // Preserve progress through each pending interval; do not hatch or lay on migration.
+            var mothers = females.Select(p => new KeyValuePair<long, BigInteger>(checked(Tick + (p.Key - Tick) * 2), p.Value)).ToArray();
+            var pendingEggs = eggs.Select(p => new KeyValuePair<long, BigInteger>(checked(Tick + (p.Key - Tick) * 2), p.Value)).ToArray();
+            long burstEnd = Phase == RunPhase.HatchAfterClear ? checked(Tick + (BurstEndTick - Tick) * 2) : BurstEndTick;
+            females.Clear(); foreach (var bucket in mothers) females.Add(bucket.Key, bucket.Value);
+            eggs.Clear(); foreach (var bucket in pendingEggs) eggs.Add(bucket.Key, bucket.Value);
+            Config.initialLayTicks = Config.layIntervalTicks = Config.firstLayTicks = 40;
+            Config.hatchTicks = Config.burstTicks = 20;
+            BurstEndTick = burstEnd;
+            Validate();
+            return true;
+        }
+
         public bool IsUnlocked(Weapon weapon) => (UnlockFlags & (1 << (int)weapon)) != 0;
         public long RemainingCooldown(Weapon weapon) => Math.Max(0, readyAt[(int)weapon] - Tick);
         public bool CanUse(Weapon weapon) => Phase != RunPhase.ReproductionEnded && Adults > 0 &&
@@ -205,8 +221,8 @@ namespace Mosquito.Core
                 Female != 2 + FemaleBorn - FemaleKilled ||
                 Male != 2 + (TotalHatched - FemaleBorn) - (TotalKilled - FemaleKilled))
                 throw new InvalidOperationException("Population conservation failed.");
-            foreach (var b in females) if (b.Key <= Tick || b.Key > Tick + 20 || b.Value <= 0) throw new InvalidOperationException("Invalid female deadline.");
-            foreach (var b in eggs) if (b.Key <= Tick || b.Key > Tick + 10 || b.Value <= 0) throw new InvalidOperationException("Invalid egg deadline.");
+            foreach (var b in females) if (b.Key <= Tick || b.Key > Tick + Config.layIntervalTicks || b.Value <= 0) throw new InvalidOperationException("Invalid female deadline.");
+            foreach (var b in eggs) if (b.Key <= Tick || b.Key > Tick + Config.hatchTicks || b.Value <= 0) throw new InvalidOperationException("Invalid egg deadline.");
             if (!Enum.IsDefined(typeof(RunPhase), Phase) || Tick < 0 || eventSequence < 0 ||
                 (Phase == RunPhase.ReproductionEnded) != (Female == 0 && Eggs == 0) ||
                 HandAttempts < 0 || HandHits < 0 || HandHits > HandAttempts || ZapperUses < 0 || IncenseUses < 0 ||
@@ -244,7 +260,7 @@ namespace Mosquito.Core
         {
             if (saved == null || saved.simulationVersion != 1 || saved.config == null ||
                 saved.readyAt == null || saved.readyAt.Length != 3 || saved.recentLays == null || saved.recentLays.Length != 20 ||
-                saved.females == null || saved.eggs == null || string.IsNullOrEmpty(saved.runId) || saved.females.Count > 20 || saved.eggs.Count > 10)
+                saved.females == null || saved.eggs == null || string.IsNullOrEmpty(saved.runId) || saved.females.Count > saved.config.layIntervalTicks || saved.eggs.Count > saved.config.hatchTicks)
                 throw new ArgumentException("Unsupported or incomplete save.");
             var game = new Simulation(saved.config, ulong.Parse(saved.initialSeed, NumberStyles.HexNumber));
             ulong rng = ulong.Parse(saved.randomState, NumberStyles.HexNumber);

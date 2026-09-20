@@ -4,7 +4,7 @@
 #ifndef ReleaseRoot
   #define ReleaseRoot "..\..\Builds\Releases"
 #endif
-#define GameVersion "0.1.0"
+#define GameVersion "0.1.1"
 
 [Setup]
 AppId={{218B8466-634B-4B60-9A4B-A33CDF929775}

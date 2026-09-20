@@ -26,15 +26,55 @@ namespace Mosquito.Tests
             return Simulation.Restore(snapshot);
         }
 
-        [Test] public void InitialMothersLayAtOneSecond_ThenEggsHatchAtOneAndHalf()
+        [Test] public void InitialMothersLayAtTwoSeconds_ThenEggsHatchAtThree()
         {
-            var game = new Simulation(seed: 7); Advance(game, 19);
+            var game = new Simulation(seed: 7); Advance(game, 39);
             Assert.That(game.Eggs, Is.EqualTo(BigInteger.Zero)); game.Step();
             Assert.That(game.Adults, Is.EqualTo(new BigInteger(4))); Assert.That(game.Eggs, Is.EqualTo(new BigInteger(2)));
-            Assert.That(game.EggBuckets.Keys.Single(), Is.EqualTo(30)); Advance(game, 10);
+            Assert.That(game.EggBuckets.Keys.Single(), Is.EqualTo(60)); Advance(game, 19);
+            Assert.That(game.Adults, Is.EqualTo(new BigInteger(4))); game.Step();
             Assert.That(game.Adults, Is.EqualTo(new BigInteger(6))); Assert.That(game.TotalHatched, Is.EqualTo(new BigInteger(2)));
-            Assert.That(game.FemaleBuckets.Keys.All(k => k == 40 || k == 50), Is.True);
+            Assert.That(game.FemaleBuckets.Keys.All(k => k == 80 || k == 100), Is.True);
         }
+        private static SimulationConfig LegacyConfig() => new SimulationConfig {
+            initialLayTicks = 20, layIntervalTicks = 20, firstLayTicks = 20, hatchTicks = 10, burstTicks = 10
+        };
+
+        [Test] public void SlowerGrowthMatchesOldPopulationAtTwiceTheElapsedTime()
+        {
+            var legacy = new Simulation(LegacyConfig(), seed: 73);
+            var slower = new Simulation(seed: 73);
+            Advance(legacy, 420); Advance(slower, 420);
+            Assert.That(slower.Adults, Is.LessThan(legacy.Adults));
+            Advance(slower, 420);
+            Assert.That(slower.Adults, Is.EqualTo(legacy.Adults));
+            Assert.That(slower.Eggs, Is.EqualTo(legacy.Eggs));
+        }
+
+        [TestCase(false)] [TestCase(true)]
+        public void LegacySaveMigrationPreservesPopulationRngAndCooldowns(bool duringRebound)
+        {
+            var original = new Simulation(LegacyConfig(), seed: 73); Advance(original, 420);
+            original.Step(duringRebound ? Weapon.Incense : Weapon.Hand);
+            var before = original.Capture();
+            var restored = Simulation.Restore(before);
+            Assert.That(restored.UpgradeReproductionPacing(), Is.True);
+            var after = restored.Capture();
+            Assert.That(after.male, Is.EqualTo(before.male));
+            Assert.That(after.randomState, Is.EqualTo(before.randomState));
+            Assert.That(after.readyAt, Is.EqualTo(before.readyAt));
+            Assert.That(after.totalKilled, Is.EqualTo(before.totalKilled));
+            Assert.That(after.females.Select(b => b.count), Is.EqualTo(before.females.Select(b => b.count)));
+            Assert.That(after.eggs.Select(b => b.count), Is.EqualTo(before.eggs.Select(b => b.count)));
+            Assert.That(after.females.Select(b => b.dueTick), Is.EqualTo(before.females.Select(b => before.tick + (b.dueTick - before.tick) * 2)));
+            Assert.That(after.eggs.Select(b => b.dueTick), Is.EqualTo(before.eggs.Select(b => before.tick + (b.dueTick - before.tick) * 2)));
+            if (duringRebound) Assert.That(after.burstEndTick, Is.EqualTo(before.tick + (before.burstEndTick - before.tick) * 2));
+            Assert.That(restored.UpgradeReproductionPacing(), Is.False);
+            Assert.That(JsonUtility.ToJson(restored.Capture()), Is.EqualTo(JsonUtility.ToJson(after)));
+            var roundTrip = Simulation.Restore(after); Advance(restored, 200); Advance(roundTrip, 200);
+            Assert.That(JsonUtility.ToJson(roundTrip.Capture()), Is.EqualTo(JsonUtility.ToJson(restored.Capture())));
+        }
+
         [Test] public void AttackBeforeDueLayCancelsMotherButPreservesExistingEggs()
         {
             var game = Fixture(0, 1, 3, eggDelay: 10, layDelay: 1); var before = game.EggsCreated;
@@ -71,7 +111,7 @@ namespace Mosquito.Tests
             Assert.That(game.EggBuckets.Keys.Single(), Is.EqualTo(due)); Assert.That(game.FemaleBuckets, Is.Empty);
             Assert.That(game.RemainingCooldown(Weapon.Incense), Is.EqualTo(200)); Advance(game, 5);
             Assert.That(game.Adults, Is.EqualTo(new BigInteger(30))); Assert.That(game.BurstHatched, Is.EqualTo(new BigInteger(30)));
-            Advance(game, 5); Assert.That(game.Phase, Is.EqualTo(RunPhase.Running));
+            Advance(game, 15); Assert.That(game.Phase, Is.EqualTo(RunPhase.Running));
         }
         [Test] public void SameTickIncenseDoesNotKillNewborns()
         {
@@ -101,7 +141,7 @@ namespace Mosquito.Tests
         }
         [Test] public void UnlocksPersistAfterPopulationFallsButResetOnNewRun()
         {
-            var game = new Simulation(seed: 73); Advance(game, 420);
+            var game = new Simulation(seed: 73); Advance(game, 840);
             Assert.That(game.IsUnlocked(Weapon.Incense), Is.True); game.Step(Weapon.Incense);
             Assert.That(game.IsUnlocked(Weapon.Incense), Is.True); Assert.That(new Simulation().UnlockFlags, Is.Zero);
         }
@@ -143,7 +183,7 @@ namespace Mosquito.Tests
             for (int i = 0; i < 6000 && game.Phase != RunPhase.ReproductionEnded; i++)
             {
                 game.Step(i % 221 == 0 ? Weapon.Incense : i % 17 == 0 ? Weapon.Zapper : (Weapon?)null); game.Validate();
-                Assert.That(game.FemaleBuckets.Count, Is.LessThanOrEqualTo(20)); Assert.That(game.EggBuckets.Count, Is.LessThanOrEqualTo(10));
+                Assert.That(game.FemaleBuckets.Count, Is.LessThanOrEqualTo(game.Config.layIntervalTicks)); Assert.That(game.EggBuckets.Count, Is.LessThanOrEqualTo(game.Config.hatchTicks));
             }
         }
         [Test] public void InvalidConservationAndExpiredBucketsAreRejected()
