@@ -28,6 +28,8 @@
 
 本地构建后的程序位于 `Builds/Windows/MosquitoObservatory.exe`。整个 `Builds/Windows` 文件夹一起复制才能运行，不能只复制 exe。构建产物和 Unity 缓存不提交 Git。
 
+发给其他电脑时，运行 `.\Tools\Package.ps1`，发送生成在 `Builds/Releases` 中的完整 ZIP。接收方先右键“全部解压缩”，再运行文件夹里的 exe，无需安装 Unity 或 Blender。打包脚本包含 `UnityPlayer.dll`、游戏数据和 Mono 运行库，并排除开发调试目录。如果提示缺少 `UnityPlayer.dll`，先检查是否只复制了 exe 或没有完整解压。
+
 ## 操作
 
 | 输入 | 动作 |
