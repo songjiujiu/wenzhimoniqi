@@ -21,6 +21,7 @@
 - 原始测试报告保存在本地 `TestResults/editmode.xml`，详细日志在 `Logs/tests.log`。
 - Windows x64 独立程序构建成功，构建日志和摘要位于 `Logs/Build.log`、`TestResults/build-summary.txt`。
 - Windows 实际运行验证通过：自然增长解锁三把武器，分别执行手掌、电拍、蚊香；暂停期间 Tick 不变；保存与恢复快照一致。
+- 单文件 Windows 安装包验证通过：166 个运行文件逐一比对哈希一致，桌面和开始菜单快捷方式目标正确；在含中文和空格的安装路径下通过实际运行验证；卸载后游戏程序、快捷方式与卸载注册信息已清理。安装包体积 26,839,515 字节，SHA-256 为 `A6EE19BB8D6FDA5483B5AA23E62E0B628A9DE5FFCDA1BA27AF9170232E37785A`。这是本机安装流程验证，其他硬件上的兼容性仍需实际试玩。
 - 实际运行记录：[runtime-smoke.json](./Preview/runtime-smoke.json)。该验证通过正常命令入口执行攻击，不等同于已经测试所有物理键鼠组合。
 - 已检查 [实际游戏画面](./Preview/gameplay.png)：中文 HUD、固定镜头房间、Blender 蚊子模型与三个武器状态均可显示。隐藏窗口采用显式 URP 渲染目标捕获，避免读取空白交换链。
 - 当前机器上的一次 Tick 耗时只是运行记录，不作为 GDD 规定的 P95、60 FPS 或 30 分钟稳定性结论。
