@@ -4,6 +4,7 @@ using System.Numerics;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Mosquito.Core;
+using Vector2 = UnityEngine.Vector2;
 using Vector3 = UnityEngine.Vector3;
 using Quaternion = UnityEngine.Quaternion;
 using Matrix4x4 = UnityEngine.Matrix4x4;
@@ -17,18 +18,29 @@ namespace Mosquito.Runtime
         private readonly Matrix4x4[] matrices = new Matrix4x4[300];
         private readonly Vector3[] positions = new Vector3[300];
         private readonly Vector3[] flightCenters = new Vector3[300];
+        private readonly Vector3[] velocities = new Vector3[300];
+        private readonly Vector3[] desiredVelocities = new Vector3[300];
+        private readonly float[] nextTurn = new float[300];
+        private readonly System.Random flightRandom = new System.Random(739391);
+        private bool inMenu;
         private readonly Quaternion[] rotations = new Quaternion[300];
         private readonly float[] phases = new float[300];
         private readonly float[] hiddenUntil = new float[300];
-        private readonly Vector3[] deathPositions = new Vector3[30];
-        private readonly float[] deathUntil = new float[30];
-        private readonly Matrix4x4[] deathMatrices = new Matrix4x4[30];
-        private int deathCursor;
+        private readonly Vector3[] deathPositions = new Vector3[300];
+        private readonly Quaternion[] deathRotations = new Quaternion[300];
+        private readonly float[] deathScales = new float[300];
+        private readonly float[] deathUntil = new float[300];
+        private readonly Matrix4x4[] deathMatrices = new Matrix4x4[300];
+        private const float DeathDuration = 1.35f;
+        private int deathCursor, flightSample = 1;
+        private Vector3 actionPosition;
         private Camera sceneCamera;
         private Transform hand, zapper;
         private Vector3 cameraPosition;
         private LineRenderer arc;
+        private LineRenderer hitRing;
         private ParticleSystem smoke;
+        private SurfaceEggView eggView;
         private float clock, actionTime;
         private int population;
         private Weapon actionWeapon;
@@ -59,9 +71,11 @@ namespace Mosquito.Runtime
             var wood = Mat("Oak", new Color(.59f, .43f, .27f));
             var dark = Mat("Graphite", new Color(.055f, .09f, .10f));
             var cream = Mat("Warm ivory", new Color(.83f, .82f, .68f));
-            Cube("Floor", new Vector3(0, -.35f, 0), new Vector3(15, .3f, 13), floor);
-            Cube("Back wall", new Vector3(0, 3, 4), new Vector3(15, 7, .25f), wall);
-            Cube("Left wall", new Vector3(-6, 3, 0), new Vector3(.25f, 7, 9), wall);
+            var floorSurface = Cube("Floor", new Vector3(0, -.35f, 0), new Vector3(15, .3f, 13), floor);
+            var backSurface = Cube("Back wall", new Vector3(0, 3, 4), new Vector3(15, 7, .25f), wall);
+            var leftSurface = Cube("Left wall", new Vector3(-6, 3, 0), new Vector3(.25f, 7, 9), wall);
+            eggView = gameObject.AddComponent<SurfaceEggView>();
+            eggView.Initialize(floorSurface.transform, backSurface.transform, leftSurface.transform, sceneCamera);
             Cube("Baseboard", new Vector3(0, -.02f, 3.8f), new Vector3(12, .22f, .12f), wood);
             Cube("Rug", new Vector3(0, -.18f, -1), new Vector3(7, .025f, 5), Mat("Rug", new Color(.22f, .33f, .31f)));
             Cube("Tabletop", new Vector3(0, .8f, 0), new Vector3(5.5f, .17f, 2.5f), wood);
@@ -110,6 +124,9 @@ namespace Mosquito.Runtime
             zapper.gameObject.SetActive(false);
             arc = new GameObject("Electric arc").AddComponent<LineRenderer>();
             arc.material = Mat("Arc", new Color(.70f, 1f, 1f)); arc.startWidth = .024f; arc.endWidth = .01f; arc.positionCount = 7; arc.enabled = false;
+            hitRing = new GameObject("Hit confirmation").AddComponent<LineRenderer>();
+            hitRing.material = Mat("Hit amber", amber); hitRing.startWidth = hitRing.endWidth = .035f;
+            hitRing.positionCount = 24; hitRing.loop = true; hitRing.enabled = false;
             smoke = new GameObject("Clear smoke").AddComponent<ParticleSystem>(); smoke.transform.position = new Vector3(0, 1.5f, 0);
             var main = smoke.main; main.startLifetime = .65f; main.startSpeed = 1.5f; main.startSize = .6f; main.maxParticles = 80;
             main.startColor = new Color(.67f, .77f, .69f, .4f); main.playOnAwake = false;
@@ -117,24 +134,25 @@ namespace Mosquito.Runtime
             smoke.GetComponent<ParticleSystemRenderer>().sharedMaterial = Mat("Smoke", new Color(.52f, .66f, .59f));
             smoke.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             BuildMosquitoMeshes();
-            int sample = 1;
             for (int i = 0; i < phases.Length; i++)
             {
                 phases[i] = i * 2.399963f;
-                // Low-discrepancy samples fill the room even when only a few insects are visible.
-                // Keep centers clear of the HUD; independent local paths avoid a shared swarm center.
-                Vector3 center;
-                Vector3 viewport;
-                do
-                {
-                    center = new Vector3(Mathf.Lerp(-4.6f, 4.2f, SpreadSample(sample, 2)),
-                        Mathf.Lerp(1.45f, 4.1f, SpreadSample(sample, 3)),
-                        Mathf.Lerp(-2.5f, 2.6f, SpreadSample(sample, 5)));
-                    sample++;
-                    viewport = sceneCamera.WorldToViewportPoint(center);
-                } while (viewport.x < .08f || viewport.x > .76f || viewport.y < .29f || viewport.y > .78f);
-                flightCenters[i] = positions[i] = center;
+                flightCenters[i] = positions[i] = NextFlightCenter();
             }
+        }
+
+        private Vector3 NextFlightCenter()
+        {
+            Vector3 center, viewport;
+            do
+            {
+                center = new Vector3(Mathf.Lerp(-4.6f, 4.2f, SpreadSample(flightSample, 2)),
+                    Mathf.Lerp(1.45f, 4.1f, SpreadSample(flightSample, 3)),
+                    Mathf.Lerp(-2.5f, 2.6f, SpreadSample(flightSample, 5)));
+                flightSample++;
+                viewport = sceneCamera.WorldToViewportPoint(center);
+            } while (viewport.x < .08f || viewport.x > .76f || viewport.y < .29f || viewport.y > .78f);
+            return center;
         }
 
         private static float SpreadSample(int index, int radix)
@@ -170,36 +188,132 @@ namespace Mosquito.Runtime
         }
 
         public void SetPopulation(Simulation game, int limit, bool menu)
-        { population = menu || game == null ? 4 : (int)BigInteger.Min(game.Adults, Mathf.Clamp(limit, 1, 300)); }
-        public void ResetVisuals() { clock = 0; actionTime = 0; Array.Clear(hiddenUntil, 0, hiddenUntil.Length); Array.Clear(deathUntil, 0, deathUntil.Length); smoke?.Clear(); }
-        public void Attack(SimEvent e)
+        {
+            inMenu = menu;
+            eggView.Sync(game, menu);
+            int desired = menu || game == null ? 4 : (int)BigInteger.Min(game.Adults, Mathf.Clamp(limit, 1, 300));
+            while (population < desired)
+            {
+                // A newborn or a replacement representative gets a new location, never its victim's path.
+                flightCenters[population] = positions[population] = NextFlightCenter();
+                rotations[population] = Quaternion.identity;
+                velocities[population] = desiredVelocities[population] = Vector3.zero;
+                nextTurn[population] = 0;
+                population++;
+            }
+            population = desired;
+        }
+        public int ActiveDeathCount
+        {
+            get { int count = 0; foreach (float until in deathUntil) if (until > Time.unscaledTime) count++; return count; }
+        }
+        public void ResetVisuals() { population = 0; clock = 0; actionTime = 0; Array.Clear(hiddenUntil, 0, hiddenUntil.Length); Array.Clear(deathUntil, 0, deathUntil.Length); smoke?.Clear(); }
+        public Vector2 VisibleTargetScreenPosition()
+        {
+            for (int i = 0; i < population; i++)
+                if (hiddenUntil[i] <= Time.unscaledTime) return sceneCamera.WorldToScreenPoint(positions[i]);
+            return new Vector2(Screen.width * .5f, Screen.height * .5f);
+        }
+
+        public bool FindEggTarget(Vector2 pointer, int[] adultTargets, out int index, out long due)
+        {
+            if (!eggView.FindTarget(pointer, out index, out due, out float distance)) return false;
+            if (adultTargets != null && adultTargets.Length > 0)
+            {
+                Vector2 adult = sceneCamera.WorldToScreenPoint(positions[adultTargets[0]]);
+                if ((adult - pointer).sqrMagnitude < distance) return false;
+            }
+            return true;
+        }
+
+        public void CrushEgg(int index)
+        {
+            actionPosition = eggView.RemoveTarget(index);
+            actionWeapon = Weapon.Hand; actionTime = .38f; missed = false;
+        }
+
+        public int[] FindTargets(Vector2 pointer, Weapon weapon)
+        {
+            float radius = (weapon == Weapon.Hand ? 45f : 95f) * Screen.height / 900f;
+            var candidates = new List<KeyValuePair<int, float>>();
+            for (int i = 0; i < population; i++)
+            {
+                if (hiddenUntil[i] > Time.unscaledTime) continue;
+                Vector3 screen = sceneCamera.WorldToScreenPoint(positions[i]);
+                if (screen.z <= 0 || screen.x < 0 || screen.x > Screen.width || screen.y < 0 || screen.y > Screen.height) continue;
+                float distance = ((Vector2)screen - pointer).sqrMagnitude;
+                if (distance <= radius * radius) candidates.Add(new KeyValuePair<int, float>(i, distance));
+            }
+            candidates.Sort((a, b) => a.Value.CompareTo(b.Value));
+            int count = Mathf.Min(weapon == Weapon.Hand ? 1 : 10, candidates.Count);
+            var targets = new int[count];
+            for (int i = 0; i < count; i++) targets[i] = candidates[i].Key;
+            return targets;
+        }
+
+        public void Attack(SimEvent e, int[] targets = null)
         {
             actionWeapon = e.Weapon; actionTime = .38f; missed = e.Type == SimEventType.Missed;
+            actionPosition = population > 0 ? positions[deathCursor % population] : new Vector3(0, 2, 0);
+            if (targets != null && targets.Length > 0) actionPosition = positions[targets[0]];
             if (e.Weapon == Weapon.Incense) smoke.Emit(40);
             if (!missed && population > 0)
             {
-                int deaths = (int)BigInteger.Min(e.Count, Math.Min(30, population));
+                float scale = population < 15 ? 1.4f : population < 100 ? 1f : .76f;
+                int deaths = (int)BigInteger.Min(e.Count, population);
+                int[] selected = null;
+                if (e.Weapon != Weapon.Incense)
+                {
+                    deaths = Math.Min(deaths, targets == null ? 0 : targets.Length);
+                    selected = new int[deaths]; if (deaths > 0) Array.Copy(targets, selected, deaths);
+                    // Remove highest indices first so compaction cannot redirect another selected hit.
+                    Array.Sort(selected); Array.Reverse(selected);
+                }
                 for (int i = 0; i < deaths; i++)
                 {
-                    int target = (deathCursor + i) % population;
-                    int slot = deathCursor++ % 30; deathPositions[slot] = positions[target]; deathUntil[slot] = Time.unscaledTime + .45f;
-                    if (e.Weapon != Weapon.Incense) hiddenUntil[target] = Time.unscaledTime + .22f;
+                    int target = selected == null ? population - 1 : selected[i];
+                    int slot = deathCursor++ % deathUntil.Length;
+                    deathPositions[slot] = positions[target]; deathRotations[slot] = rotations[target]; deathScales[slot] = scale;
+                    deathUntil[slot] = Time.unscaledTime + DeathDuration;
+                    // Compact the live list: survivors keep their exact positions and flight paths.
+                    int last = --population;
+                    positions[target] = positions[last]; rotations[target] = rotations[last];
+                    flightCenters[target] = flightCenters[last]; phases[target] = phases[last]; hiddenUntil[target] = hiddenUntil[last];
+                    velocities[target] = velocities[last]; desiredVelocities[target] = desiredVelocities[last]; nextTurn[target] = nextTurn[last];
+                    hiddenUntil[last] = e.Weapon == Weapon.Incense ? 0 : Time.unscaledTime + DeathDuration;
                 }
-                if (e.Weapon == Weapon.Incense) Array.Clear(hiddenUntil, 0, hiddenUntil.Length);
             }
         }
 
         public void Animate(bool running, bool reducedFlash, bool shake)
         {
-            if (running || population == 4) clock += Time.unscaledDeltaTime;
+            eggView.Draw();
+            float dt = running || inMenu ? Mathf.Min(Time.unscaledDeltaTime, .05f) : 0;
+            clock += dt;
             actionTime = Mathf.Max(0, actionTime - Time.unscaledDeltaTime);
             float scale = population < 15 ? 1.4f : population < 100 ? 1f : .76f;
             for (int i = 0; i < population; i++)
             {
-                float p = phases[i], t = clock * (.45f + i % 7 * .045f);
-                positions[i] = flightCenters[i] + new Vector3(Mathf.Sin(t + p) * .32f,
-                    Mathf.Sin(t * 1.4f + p * 2) * .22f, Mathf.Cos(t * .8f + p) * .30f);
-                rotations[i] = Quaternion.Euler(Mathf.Sin(t + p) * 14, (t + p) * Mathf.Rad2Deg, Mathf.Sin(t * 2 + p) * 15);
+                if (dt <= 0) continue;
+                Vector3 viewport = sceneCamera.WorldToViewportPoint(positions[i]);
+                bool nearEdge = viewport.x < .08f || viewport.x > .76f || viewport.y < .29f || viewport.y > .78f ||
+                    positions[i].y < 1.25f || positions[i].y > 4.3f || Mathf.Abs(positions[i].x) > 4.8f || Mathf.Abs(positions[i].z) > 2.8f;
+                if (clock >= nextTurn[i] || nearEdge)
+                {
+                    flightSample += flightRandom.Next(1, 17);
+                    flightCenters[i] = NextFlightCenter();
+                    Vector3 direction = nearEdge ? (flightCenters[i] - positions[i]).normalized :
+                        new Vector3((float)flightRandom.NextDouble() * 2 - 1, (float)flightRandom.NextDouble() - .5f, (float)flightRandom.NextDouble() * 2 - 1).normalized;
+                    float speed = .65f + (float)flightRandom.NextDouble() * 1.7f;
+                    if (flightRandom.NextDouble() < .16) speed *= 1.6f;
+                    desiredVelocities[i] = direction * speed;
+                    nextTurn[i] = clock + .25f + (float)flightRandom.NextDouble() * 1.05f;
+                    if (nearEdge) velocities[i] = desiredVelocities[i];
+                }
+                velocities[i] = Vector3.Lerp(velocities[i], desiredVelocities[i], 1 - Mathf.Exp(-7 * dt));
+                positions[i] += velocities[i] * dt;
+                if (velocities[i].sqrMagnitude > .01f)
+                    rotations[i] = Quaternion.Slerp(rotations[i], Quaternion.LookRotation(velocities[i]), 1 - Mathf.Exp(-9 * dt));
             }
             foreach (var part in parts)
             {
@@ -215,9 +329,12 @@ namespace Mosquito.Runtime
                 {
                     float remaining = deathUntil[i] - Time.unscaledTime;
                     if (remaining <= 0) continue;
-                    float elapsed = .45f - remaining;
-                    deathMatrices[deathCount++] = Matrix4x4.TRS(deathPositions[i] + Vector3.down * elapsed * 3,
-                        Quaternion.Euler(90, elapsed * 400, 180), Vector3.one * scale * (remaining / .45f));
+                    float elapsed = DeathDuration - remaining;
+                    float fade = Mathf.Clamp01(remaining / .35f);
+                    Vector3 fall = deathPositions[i] + new Vector3(Mathf.Sin(i * 2.4f) * elapsed * .25f, -1.8f * elapsed * elapsed, 0);
+                    fall.y = Mathf.Max(.05f, fall.y);
+                    deathMatrices[deathCount++] = Matrix4x4.TRS(fall,
+                        deathRotations[i] * Quaternion.Euler(0, elapsed * 160, Mathf.Min(180, elapsed * 900)), Vector3.one * deathScales[i] * fade);
                 }
                 if (deathCount > 0) Graphics.DrawMeshInstanced(part.mesh, 0, part.material, deathMatrices, deathCount, null, ShadowCastingMode.Off, false);
             }
@@ -225,11 +342,17 @@ namespace Mosquito.Runtime
             hand.gameObject.SetActive(visible && actionWeapon == Weapon.Hand);
             zapper.gameObject.SetActive(visible && actionWeapon == Weapon.Zapper);
             float progress = 1 - actionTime / .38f;
-            var location = new Vector3(missed ? 1.2f : .2f, 2.9f - Mathf.Sin(progress * Mathf.PI) * .8f, -.5f);
+            var location = actionPosition + new Vector3(missed ? .7f : 0, .6f - Mathf.Sin(progress * Mathf.PI) * .6f, 0);
             hand.position = location; hand.rotation = Quaternion.Euler(12 + progress * 30, -20, -12);
             zapper.position = location; zapper.rotation = Quaternion.Euler(18 + progress * 40, 0, -20);
             arc.enabled = visible && actionWeapon == Weapon.Zapper && !reducedFlash;
             if (arc.enabled) for (int i = 0; i < 7; i++) arc.SetPosition(i, location + new Vector3((i - 3) * .15f, .12f + (i % 2) * .15f, i * .04f));
+            hitRing.enabled = visible && !missed && actionWeapon != Weapon.Incense;
+            if (hitRing.enabled) for (int i = 0; i < hitRing.positionCount; i++)
+            {
+                float angle = i * Mathf.PI * 2 / hitRing.positionCount;
+                hitRing.SetPosition(i, actionPosition + (sceneCamera.transform.right * Mathf.Cos(angle) + sceneCamera.transform.up * Mathf.Sin(angle)) * (.16f + progress * .45f));
+            }
             sceneCamera.transform.position = cameraPosition + (shake && visible && actionWeapon == Weapon.Incense ? new Vector3(Mathf.Sin(progress * 53) * .025f, 0, 0) : Vector3.zero);
         }
 

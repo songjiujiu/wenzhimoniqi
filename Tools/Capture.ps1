@@ -1,4 +1,4 @@
-param([switch]$SmokeTest, [switch]$Menu)
+param([switch]$SmokeTest, [switch]$Menu, [switch]$DeathPreview)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $exe = Join-Path $projectRoot 'Builds\Windows\MosquitoObservatory.exe'
@@ -6,15 +6,18 @@ if (-not (Test-Path -LiteralPath $exe)) { throw 'Build the Windows prototype fir
 $preview = Join-Path $projectRoot 'Docs\Preview'
 $saveDir = Join-Path $projectRoot ('TestResults\capture-save-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $preview, $saveDir | Out-Null
-$name = if ($Menu) { 'menu' } else { 'gameplay' }
+$name = if ($Menu) { 'menu' } elseif ($DeathPreview) { 'death-feedback' } else { 'gameplay' }
 $arguments = @('-screen-width','1600','-screen-height','900','-screen-fullscreen','0',
     '-silent','-saveDir',('"'+$saveDir+'"'), '-capture',('"'+(Join-Path $preview "$name.png")+'"'),
     '-capture-delay','8','-quit-after-capture','-logFile',('"'+(Join-Path $projectRoot "Logs\capture-$name.log")+'"'))
 if (-not $Menu) { $arguments += '-auto-play' }
 if ($SmokeTest) { $arguments += '-smoke-test' }
+if ($DeathPreview) { $arguments += '-death-preview' }
 $startedAt = [DateTime]::UtcNow
 $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru
-if (-not $process.WaitForExit(60000)) {
+$deadline = [DateTime]::UtcNow.AddSeconds(300)
+while (-not $process.WaitForExit(1000) -and [DateTime]::UtcNow -lt $deadline) { }
+if (-not $process.HasExited) {
     $process.Kill()
     throw 'The capture player timed out; inspect its log.'
 }

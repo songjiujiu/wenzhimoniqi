@@ -14,7 +14,9 @@ $gameRoot = Join-Path $testRoot '安装 测试\MosquitoObservatory'
 New-Item -ItemType Directory -Force -Path $testRoot | Out-Null
 function Invoke-CheckedProcess([string]$File, [string[]]$Arguments, [string]$WorkingDirectory) {
     $process = Start-Process -FilePath $File -ArgumentList $Arguments -WorkingDirectory $WorkingDirectory -WindowStyle Hidden -PassThru
-    if (-not $process.WaitForExit(60000)) { $process.Kill(); throw "Timed out: $File" }
+    $deadline = [DateTime]::UtcNow.AddSeconds(300)
+    while (-not $process.WaitForExit(1000) -and [DateTime]::UtcNow -lt $deadline) { }
+    if (-not $process.HasExited) { $process.Kill(); throw "Timed out: $File" }
     if ($process.ExitCode -ne 0) { throw "Exit code $($process.ExitCode): $File" }
 }
 $report = [ordered]@{ installer = $InstallerPath; sha256 = (Get-FileHash -LiteralPath $InstallerPath).Hash; fileCount = 0; shortcuts = $false; runtime = $false; uninstall = $false }

@@ -24,6 +24,7 @@ namespace Mosquito.Core
         public string male, maxAdult, maxEgg, maxFemale;
         public string totalKilled, femaleKilled, totalHatched, femaleBorn, eggsCreated, bestClear;
         public string burstInitialEggs, burstHatched;
+        public string eggsKilled = "0";
         public long handAttempts, handHits, zapperUses, incenseUses;
         public long[] readyAt;
         public List<BucketSnapshot> females, eggs;

@@ -16,11 +16,11 @@ MonoBehaviour:
     tickMs: 50
     startMale: 2
     startFemale: 2
-    initialLayTicks: 40
-    layIntervalTicks: 40
-    firstLayTicks: 40
-    hatchTicks: 20
-    burstTicks: 20
+    initialLayTicks: 120
+    layIntervalTicks: 120
+    firstLayTicks: 120
+    hatchTicks: 60
+    burstTicks: 60
     smallBatchLimit: 1024
     handUnlock: 10
     zapperUnlock: 100

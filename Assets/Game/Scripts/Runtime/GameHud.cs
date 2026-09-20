@@ -72,7 +72,7 @@ namespace Mosquito.Runtime
             rate = Text(side, "最近 1 秒产卵  0", 28, 365, 290, 38, 18, muted);
             time = Text(side, "模拟时长  00:00", 28, 415, 290, 37, 18, muted);
             phase = Text(canvasRoot, "● 观察中", 62, 235, 640, 40, 22, amber);
-            Text(canvasRoot, "数量超过 300 后，画面展示部分蚊群", 64, 284, 810, 28, 17, muted);
+            Text(canvasRoot, "蚊子或虫卵较多时，画面仅展示部分个体", 64, 284, 810, 28, 17, muted);
 
             var bottom = Box(canvasRoot, "Weapon tray", 0, 830, 1920, 250, ink);
             status = Text(bottom, "", 64, 18, 1750, 37, 23, ivory);
@@ -163,7 +163,7 @@ namespace Mosquito.Runtime
                 progress[i].rectTransform.sizeDelta = new Vector2(582 * fraction, 5);
                 weaponDetails[i].text = !unlocked ? "本局峰值 " + new[] { "10", "100", "1,000" }[i] + " 只解锁" :
                     sim.RemainingCooldown(weapon) > 0 ? "冷却 " + (sim.RemainingCooldown(weapon) * .05f).ToString("F1") + "s" :
-                    weapon == Weapon.Hand ? "50% 命中 · 单次 1 只" : weapon == Weapon.Zapper ? "单次最多 10 只 · 按住连发" : "清除成蚊 · 保留虫卵";
+                    weapon == Weapon.Hand ? "蚊子或虫卵 · 单个必中" : weapon == Weapon.Zapper ? "指针范围内最多 10 只" : "清除成蚊 · 保留虫卵";
             }
             bool ended = sim != null && sim.Phase == RunPhase.ReproductionEnded;
             bool showModal = game.InMenu || game.Paused || ended || confirmRestart || game.SettingsOpen;

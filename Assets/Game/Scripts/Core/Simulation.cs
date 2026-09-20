@@ -46,6 +46,7 @@ namespace Mosquito.Core
         public BigInteger TotalHatched { get; private set; }
         public BigInteger FemaleBorn { get; private set; }
         public BigInteger EggsCreated { get; private set; }
+        public BigInteger EggsKilled { get; private set; }
         public BigInteger BestClear { get; private set; }
         public BigInteger BurstInitialEggs { get; private set; }
         public BigInteger BurstHatched { get; private set; }
@@ -71,15 +72,16 @@ namespace Mosquito.Core
 
         public bool UpgradeReproductionPacing()
         {
-            if (Config.layIntervalTicks != 20) return false;
+            if (Config.layIntervalTicks == 120) return false;
+            int factor = 120 / Config.layIntervalTicks;
             // Preserve progress through each pending interval; do not hatch or lay on migration.
-            var mothers = females.Select(p => new KeyValuePair<long, BigInteger>(checked(Tick + (p.Key - Tick) * 2), p.Value)).ToArray();
-            var pendingEggs = eggs.Select(p => new KeyValuePair<long, BigInteger>(checked(Tick + (p.Key - Tick) * 2), p.Value)).ToArray();
-            long burstEnd = Phase == RunPhase.HatchAfterClear ? checked(Tick + (BurstEndTick - Tick) * 2) : BurstEndTick;
+            var mothers = females.Select(p => new KeyValuePair<long, BigInteger>(checked(Tick + (p.Key - Tick) * factor), p.Value)).ToArray();
+            var pendingEggs = eggs.Select(p => new KeyValuePair<long, BigInteger>(checked(Tick + (p.Key - Tick) * factor), p.Value)).ToArray();
+            long burstEnd = Phase == RunPhase.HatchAfterClear ? checked(Tick + (BurstEndTick - Tick) * factor) : BurstEndTick;
             females.Clear(); foreach (var bucket in mothers) females.Add(bucket.Key, bucket.Value);
             eggs.Clear(); foreach (var bucket in pendingEggs) eggs.Add(bucket.Key, bucket.Value);
-            Config.initialLayTicks = Config.layIntervalTicks = Config.firstLayTicks = 40;
-            Config.hatchTicks = Config.burstTicks = 20;
+            Config.initialLayTicks = Config.layIntervalTicks = Config.firstLayTicks = 120;
+            Config.hatchTicks = Config.burstTicks = 60;
             BurstEndTick = burstEnd;
             Validate();
             return true;
@@ -87,16 +89,17 @@ namespace Mosquito.Core
 
         public bool IsUnlocked(Weapon weapon) => (UnlockFlags & (1 << (int)weapon)) != 0;
         public long RemainingCooldown(Weapon weapon) => Math.Max(0, readyAt[(int)weapon] - Tick);
-        public bool CanUse(Weapon weapon) => Phase != RunPhase.ReproductionEnded && Adults > 0 &&
+        public bool CanUse(Weapon weapon) => Phase != RunPhase.ReproductionEnded && (Adults > 0 || weapon == Weapon.Hand && Eggs > 0) &&
             IsUnlocked(weapon) && RemainingCooldown(weapon) == 0 &&
             !(weapon == Weapon.Incense && Phase == RunPhase.HatchAfterClear);
 
-        public void Step(Weapon? command = null)
+        public void Step(Weapon? command = null, int targetLimit = int.MaxValue, long? eggDue = null)
         {
             events.Clear();
             if (Phase == RunPhase.ReproductionEnded) return;
             Tick = checked(Tick + 1);
-            if (command.HasValue) Attack(command.Value);
+            if (command == Weapon.Hand && eggDue.HasValue) CrushEgg(eggDue.Value);
+            else if (command.HasValue) Attack(command.Value, targetLimit);
 
             var laid = Pop(females, Tick);
             if (laid > 0)
@@ -126,14 +129,24 @@ namespace Mosquito.Core
             else if (Phase == RunPhase.HatchAfterClear && Tick >= BurstEndTick) Phase = RunPhase.Running;
         }
 
-        private void Attack(Weapon weapon)
+        private void CrushEgg(long due)
+        {
+            if (!CanUse(Weapon.Hand) || !eggs.TryGetValue(due, out var count) || count <= 0) return;
+            if (count == 1) eggs.Remove(due); else eggs[due] = count - 1;
+            Eggs--; EggsKilled++; HandAttempts++; HandHits++;
+            readyAt[(int)Weapon.Hand] = checked(Tick + Config.handCooldown);
+            Emit(SimEventType.EggKilled, Weapon.Hand, BigInteger.One);
+        }
+
+        private void Attack(Weapon weapon, int targetLimit)
         {
             if (!Enum.IsDefined(typeof(Weapon), weapon) || !CanUse(weapon)) return;
+            if (Adults == 0) return;
+            if (weapon != Weapon.Incense && targetLimit <= 0) return;
             readyAt[(int)weapon] = checked(Tick + Config.Cooldown(weapon));
             if (weapon == Weapon.Hand)
             {
                 HandAttempts++;
-                if (!random.NextBool()) { Emit(SimEventType.Missed, weapon); return; }
                 HandHits++;
             }
             if (weapon == Weapon.Zapper) ZapperUses++;
@@ -149,7 +162,7 @@ namespace Mosquito.Core
             }
             else
             {
-                int target = (int)BigInteger.Min(weapon == Weapon.Hand ? 1 : Config.zapperKills, Adults);
+                int target = (int)BigInteger.Min(Math.Min(weapon == Weapon.Hand ? 1 : Config.zapperKills, targetLimit), Adults);
                 killed = target; girls = 0;
                 for (int i = 0; i < target; i++)
                 {
@@ -217,7 +230,7 @@ namespace Mosquito.Core
                 MaxFemale < Female || MaxEgg < Eggs || BestClear > TotalKilled ||
                 Female != females.Values.Aggregate(BigInteger.Zero, (a, b) => a + b) ||
                 Eggs != eggs.Values.Aggregate(BigInteger.Zero, (a, b) => a + b) ||
-                Adults != 4 + TotalHatched - TotalKilled || Eggs != EggsCreated - TotalHatched ||
+                Adults != 4 + TotalHatched - TotalKilled || EggsKilled < 0 || Eggs != EggsCreated - TotalHatched - EggsKilled ||
                 Female != 2 + FemaleBorn - FemaleKilled ||
                 Male != 2 + (TotalHatched - FemaleBorn) - (TotalKilled - FemaleKilled))
                 throw new InvalidOperationException("Population conservation failed.");
@@ -247,7 +260,7 @@ namespace Mosquito.Core
                 tick = Tick, phase = Phase, burstEndTick = BurstEndTick, eventSequence = eventSequence, unlockFlags = UnlockFlags, testRun = TestRun,
                 male = S(Male), maxAdult = S(MaxAdult), maxEgg = S(MaxEgg), maxFemale = S(MaxFemale),
                 totalKilled = S(TotalKilled), femaleKilled = S(FemaleKilled), totalHatched = S(TotalHatched), femaleBorn = S(FemaleBorn),
-                eggsCreated = S(EggsCreated), bestClear = S(BestClear), burstInitialEggs = S(BurstInitialEggs), burstHatched = S(BurstHatched),
+                eggsCreated = S(EggsCreated), eggsKilled = S(EggsKilled), bestClear = S(BestClear), burstInitialEggs = S(BurstInitialEggs), burstHatched = S(BurstHatched),
                 handAttempts = HandAttempts, handHits = HandHits, zapperUses = ZapperUses, incenseUses = IncenseUses,
                 readyAt = (long[])readyAt.Clone(),
                 females = females.Select(b => new BucketSnapshot(b.Key, S(b.Value))).ToList(),
@@ -271,6 +284,7 @@ namespace Mosquito.Core
             game.Male = N(saved.male); game.MaxAdult = N(saved.maxAdult); game.MaxEgg = N(saved.maxEgg); game.MaxFemale = N(saved.maxFemale);
             game.TotalKilled = N(saved.totalKilled); game.FemaleKilled = N(saved.femaleKilled); game.TotalHatched = N(saved.totalHatched);
             game.FemaleBorn = N(saved.femaleBorn); game.EggsCreated = N(saved.eggsCreated); game.BestClear = N(saved.bestClear);
+            game.EggsKilled = N(saved.eggsKilled ?? "0");
             game.BurstInitialEggs = N(saved.burstInitialEggs); game.BurstHatched = N(saved.burstHatched);
             game.HandAttempts = saved.handAttempts; game.HandHits = saved.handHits; game.ZapperUses = saved.zapperUses; game.IncenseUses = saved.incenseUses;
             Array.Copy(saved.readyAt, game.readyAt, 3);

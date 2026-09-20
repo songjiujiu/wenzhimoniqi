@@ -26,35 +26,37 @@ namespace Mosquito.Tests
             return Simulation.Restore(snapshot);
         }
 
-        [Test] public void InitialMothersLayAtTwoSeconds_ThenEggsHatchAtThree()
+        [Test] public void InitialMothersLayAtSixSeconds_ThenEggsHatchAtNine()
         {
-            var game = new Simulation(seed: 7); Advance(game, 39);
+            var game = new Simulation(seed: 7); Advance(game, 119);
             Assert.That(game.Eggs, Is.EqualTo(BigInteger.Zero)); game.Step();
             Assert.That(game.Adults, Is.EqualTo(new BigInteger(4))); Assert.That(game.Eggs, Is.EqualTo(new BigInteger(2)));
-            Assert.That(game.EggBuckets.Keys.Single(), Is.EqualTo(60)); Advance(game, 19);
+            Assert.That(game.EggBuckets.Keys.Single(), Is.EqualTo(180)); Advance(game, 59);
             Assert.That(game.Adults, Is.EqualTo(new BigInteger(4))); game.Step();
             Assert.That(game.Adults, Is.EqualTo(new BigInteger(6))); Assert.That(game.TotalHatched, Is.EqualTo(new BigInteger(2)));
-            Assert.That(game.FemaleBuckets.Keys.All(k => k == 80 || k == 100), Is.True);
+            Assert.That(game.FemaleBuckets.Keys.All(k => k == 240 || k == 300), Is.True);
         }
         private static SimulationConfig LegacyConfig() => new SimulationConfig {
             initialLayTicks = 20, layIntervalTicks = 20, firstLayTicks = 20, hatchTicks = 10, burstTicks = 10
         };
 
-        [Test] public void SlowerGrowthMatchesOldPopulationAtTwiceTheElapsedTime()
+        [Test] public void SlowerGrowthMatchesOriginalPopulationAtSixTimesElapsedTime()
         {
             var legacy = new Simulation(LegacyConfig(), seed: 73);
             var slower = new Simulation(seed: 73);
             Advance(legacy, 420); Advance(slower, 420);
             Assert.That(slower.Adults, Is.LessThan(legacy.Adults));
-            Advance(slower, 420);
+            Advance(slower, 2100);
             Assert.That(slower.Adults, Is.EqualTo(legacy.Adults));
             Assert.That(slower.Eggs, Is.EqualTo(legacy.Eggs));
         }
 
-        [TestCase(false)] [TestCase(true)]
-        public void LegacySaveMigrationPreservesPopulationRngAndCooldowns(bool duringRebound)
+        [TestCase(false, 20)] [TestCase(true, 20)] [TestCase(false, 40)] [TestCase(true, 40)]
+        public void LegacySaveMigrationPreservesPopulationRngAndCooldowns(bool duringRebound, int interval)
         {
-            var original = new Simulation(LegacyConfig(), seed: 73); Advance(original, 420);
+            var config = LegacyConfig(); config.initialLayTicks = config.layIntervalTicks = config.firstLayTicks = interval; config.hatchTicks = config.burstTicks = interval / 2;
+            int factor = 120 / interval;
+            var original = new Simulation(config, seed: 73); Advance(original, 420 * interval / 20);
             original.Step(duringRebound ? Weapon.Incense : Weapon.Hand);
             var before = original.Capture();
             var restored = Simulation.Restore(before);
@@ -66,9 +68,9 @@ namespace Mosquito.Tests
             Assert.That(after.totalKilled, Is.EqualTo(before.totalKilled));
             Assert.That(after.females.Select(b => b.count), Is.EqualTo(before.females.Select(b => b.count)));
             Assert.That(after.eggs.Select(b => b.count), Is.EqualTo(before.eggs.Select(b => b.count)));
-            Assert.That(after.females.Select(b => b.dueTick), Is.EqualTo(before.females.Select(b => before.tick + (b.dueTick - before.tick) * 2)));
-            Assert.That(after.eggs.Select(b => b.dueTick), Is.EqualTo(before.eggs.Select(b => before.tick + (b.dueTick - before.tick) * 2)));
-            if (duringRebound) Assert.That(after.burstEndTick, Is.EqualTo(before.tick + (before.burstEndTick - before.tick) * 2));
+            Assert.That(after.females.Select(b => b.dueTick), Is.EqualTo(before.females.Select(b => before.tick + (b.dueTick - before.tick) * factor)));
+            Assert.That(after.eggs.Select(b => b.dueTick), Is.EqualTo(before.eggs.Select(b => before.tick + (b.dueTick - before.tick) * factor)));
+            if (duringRebound) Assert.That(after.burstEndTick, Is.EqualTo(before.tick + (before.burstEndTick - before.tick) * factor));
             Assert.That(restored.UpgradeReproductionPacing(), Is.False);
             Assert.That(JsonUtility.ToJson(restored.Capture()), Is.EqualTo(JsonUtility.ToJson(after)));
             var roundTrip = Simulation.Restore(after); Advance(restored, 200); Advance(roundTrip, 200);
@@ -83,12 +85,68 @@ namespace Mosquito.Tests
             Assert.That(game.Eggs, Is.EqualTo(new BigInteger(3))); Advance(game, 9);
             Assert.That(game.TotalHatched, Is.EqualTo(new BigInteger(4)));
         }
-        [Test] public void HandMissConsumesCooldownButDoesNotKill()
+        [TestCase(1UL)] [TestCase(2UL)] [TestCase(73UL)] [TestCase(999UL)]
+        public void HandAlwaysKillsAnAvailableTarget(ulong seed)
         {
-            var game = Fixture(998, 2, 0, rng: 2); game.Step(Weapon.Hand);
-            Assert.That(game.Adults, Is.EqualTo(new BigInteger(1000))); Assert.That(game.HandAttempts, Is.EqualTo(1));
-            Assert.That(game.HandHits, Is.Zero); Assert.That(game.RemainingCooldown(Weapon.Hand), Is.EqualTo(6));
+            var game = Fixture(998, 2, 0, rng: seed); game.Step(Weapon.Hand, 1);
+            Assert.That(game.Adults, Is.EqualTo(new BigInteger(999))); Assert.That(game.HandAttempts, Is.EqualTo(1));
+            Assert.That(game.HandHits, Is.EqualTo(1)); Assert.That(game.RemainingCooldown(Weapon.Hand), Is.EqualTo(6));
         }
+        [Test] public void HandDoesNotKillOutsideTheTargetArea()
+        {
+            var game = Fixture(998, 2, 0); game.Step(Weapon.Hand, 0);
+            Assert.That(game.Adults, Is.EqualTo(new BigInteger(1000)));
+            Assert.That(game.HandAttempts, Is.Zero);
+            Assert.That(game.RemainingCooldown(Weapon.Hand), Is.Zero);
+        }
+        [Test] public void HandCrushesEggBeforeItsSameTickHatch()
+        {
+            var game = Fixture(0, 0, 2, eggDelay: 1);
+            long due = game.EggBuckets.Keys.Single(); var kills = game.TotalKilled;
+            game.Step(Weapon.Hand, 0, due); game.Validate();
+            Assert.That(game.EggsKilled, Is.EqualTo(BigInteger.One));
+            Assert.That(game.TotalHatched, Is.EqualTo(BigInteger.One));
+            Assert.That(game.Adults, Is.EqualTo(BigInteger.One));
+            Assert.That(game.TotalKilled, Is.EqualTo(kills));
+            Assert.That(game.Events.First().Type, Is.EqualTo(SimEventType.EggKilled));
+        }
+
+        [Test] public void LastEggCanBeCrushedWithoutAnyAdults()
+        {
+            var game = Fixture(0, 0, 1);
+            Assert.That(game.CanUse(Weapon.Hand), Is.True);
+            game.Step(Weapon.Hand, 0, game.EggBuckets.Keys.Single()); game.Validate();
+            Assert.That(game.Eggs, Is.EqualTo(BigInteger.Zero));
+            Assert.That(game.Phase, Is.EqualTo(RunPhase.ReproductionEnded));
+            Advance(game, 100); Assert.That(game.Adults, Is.EqualTo(BigInteger.Zero));
+        }
+
+        [Test] public void EggAndAdultHitsShareHandCooldownAndSaveDestroyedEggs()
+        {
+            var game = Fixture(998, 2, 3, eggDelay: 20);
+            long due = game.EggBuckets.Keys.Single();
+            game.Step(Weapon.Hand, 0, due);
+            game.Step(Weapon.Hand, 1); game.Step(Weapon.Hand, 0, due);
+            Assert.That(game.HandHits, Is.EqualTo(1));
+            Assert.That(game.Eggs, Is.EqualTo(new BigInteger(2)));
+            Assert.That(game.Adults, Is.EqualTo(new BigInteger(1000)));
+            var restored = Simulation.Restore(game.Capture());
+            Advance(game, 25); Advance(restored, 25);
+            Assert.That(JsonUtility.ToJson(restored.Capture()), Is.EqualTo(JsonUtility.ToJson(game.Capture())));
+            Assert.That(restored.EggsKilled, Is.EqualTo(BigInteger.One));
+        }
+
+        [Test] public void InvalidEggTargetDoesNotKillAnUnrelatedAdultOrEgg()
+        {
+            var game = Fixture(998, 2, 3);
+            game.Step(Weapon.Hand, 1, 9999);
+            Assert.That(game.Adults, Is.EqualTo(new BigInteger(1000)));
+            Assert.That(game.Eggs, Is.EqualTo(new BigInteger(3)));
+            Assert.That(game.HandAttempts, Is.Zero);
+            var oldSave = game.Capture(); oldSave.eggsKilled = null;
+            Assert.That(Simulation.Restore(oldSave).EggsKilled, Is.EqualTo(BigInteger.Zero));
+        }
+
         [Test] public void CooldownBoundaryAndIndependentWeapons()
         {
             var game = Fixture(998, 2, 10); game.Step(Weapon.Hand); long attempts = game.HandAttempts;
@@ -97,6 +155,21 @@ namespace Mosquito.Tests
             Assert.That(game.HandAttempts, Is.EqualTo(attempts + 1)); game.Step(Weapon.Zapper);
             Assert.That(game.ZapperUses, Is.EqualTo(1)); game.Validate();
         }
+        [TestCase(0, 0)] [TestCase(1, 1)] [TestCase(3, 3)] [TestCase(10, 10)] [TestCase(20, 10)]
+        public void ZapperKillsOnlyTheNumberOfTargetsInTheAimedArea(int targets, int expected)
+        {
+            var game = Fixture(998, 2, 0);
+            var previousRng = game.Capture().randomState;
+            game.Step(Weapon.Zapper, targets); game.Validate();
+            Assert.That(game.Adults, Is.EqualTo(new BigInteger(1000 - expected)));
+            Assert.That(game.ZapperUses, Is.EqualTo(expected == 0 ? 0 : 1));
+            if (expected == 0)
+            {
+                Assert.That(game.RemainingCooldown(Weapon.Zapper), Is.Zero);
+                Assert.That(game.Capture().randomState, Is.EqualTo(previousRng));
+            }
+        }
+
         [Test] public void ZapperKillsOnlyAvailableAdultsAndEndsReproduction()
         {
             var game = Fixture(4, 2, 0); game.Step(Weapon.Zapper); game.Validate();
@@ -111,7 +184,7 @@ namespace Mosquito.Tests
             Assert.That(game.EggBuckets.Keys.Single(), Is.EqualTo(due)); Assert.That(game.FemaleBuckets, Is.Empty);
             Assert.That(game.RemainingCooldown(Weapon.Incense), Is.EqualTo(200)); Advance(game, 5);
             Assert.That(game.Adults, Is.EqualTo(new BigInteger(30))); Assert.That(game.BurstHatched, Is.EqualTo(new BigInteger(30)));
-            Advance(game, 15); Assert.That(game.Phase, Is.EqualTo(RunPhase.Running));
+            Advance(game, 55); Assert.That(game.Phase, Is.EqualTo(RunPhase.Running));
         }
         [Test] public void SameTickIncenseDoesNotKillNewborns()
         {
@@ -141,7 +214,7 @@ namespace Mosquito.Tests
         }
         [Test] public void UnlocksPersistAfterPopulationFallsButResetOnNewRun()
         {
-            var game = new Simulation(seed: 73); Advance(game, 840);
+            var game = new Simulation(seed: 73); Advance(game, 2520);
             Assert.That(game.IsUnlocked(Weapon.Incense), Is.True); game.Step(Weapon.Incense);
             Assert.That(game.IsUnlocked(Weapon.Incense), Is.True); Assert.That(new Simulation().UnlockFlags, Is.Zero);
         }

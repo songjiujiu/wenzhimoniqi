@@ -32,6 +32,9 @@ namespace Mosquito.Runtime
         private GameSettings settings;
         private double remainder, lastRealTime;
         private Weapon? queuedCommand;
+        private UnityEngine.Vector2 queuedAim;
+        private int[] attackTargets;
+        private int eggTarget = -1;
         private bool holdArmed, exitAuthorized;
         private int lastMilestone;
         private bool saveRequested;
@@ -78,8 +81,15 @@ namespace Mosquito.Runtime
                     {
                         PendingTicks--;
                         Weapon? command = queuedCommand; queuedCommand = null;
-                        if (!command.HasValue && holdArmed && !Recovering && Selected != Weapon.Incense) command = Selected;
-                        stopwatch.Restart(); Game.Step(command); stopwatch.Stop();
+                        var aim = queuedAim;
+                        if (!command.HasValue && holdArmed && !Recovering && Selected != Weapon.Incense)
+                        { command = Selected; aim = PointerPosition(); }
+                        attackTargets = command.HasValue && command.Value != Weapon.Incense ? room.FindTargets(aim, command.Value) : null;
+                        long? eggDue = null; eggTarget = -1;
+                        if (command == Weapon.Hand && room.FindEggTarget(aim, attackTargets, out int eggIndex, out long dueTick))
+                        { eggTarget = eggIndex; eggDue = dueTick; }
+                        if (attackTargets != null && attackTargets.Length == 0 && !eggDue.HasValue) Status = "没有击中：指针范围内没有可攻击目标。";
+                        stopwatch.Restart(); Game.Step(command, attackTargets == null ? int.MaxValue : attackTargets.Length, eggDue); stopwatch.Stop();
                         LastTickMilliseconds = stopwatch.Elapsed.TotalMilliseconds;
                         ProcessEvents();
                         Profile.MergeRecords(Game);
@@ -106,7 +116,7 @@ namespace Mosquito.Runtime
                 if (keyboard.digit1Key.wasPressedThisFrame) Select(Weapon.Hand);
                 if (keyboard.digit2Key.wasPressedThisFrame) Select(Weapon.Zapper);
                 if (keyboard.digit3Key.wasPressedThisFrame) Select(Weapon.Incense);
-                if (keyboard.spaceKey.wasPressedThisFrame) Queue(Selected);
+                if (keyboard.spaceKey.wasPressedThisFrame && !(EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())) Queue(Selected);
             }
             if (mouse == null) return;
             bool overUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
@@ -114,7 +124,13 @@ namespace Mosquito.Runtime
             if (mouse.leftButton.wasPressedThisFrame && !overUi)
             { Queue(Selected); holdArmed = Selected != Weapon.Incense; }
         }
-        private void Queue(Weapon weapon) { if (!queuedCommand.HasValue) queuedCommand = weapon; }
+        private UnityEngine.Vector2 PointerPosition() => Mouse.current == null ? new UnityEngine.Vector2(Screen.width * .5f, Screen.height * .5f) : Mouse.current.position.ReadValue();
+        private void Queue(Weapon weapon)
+        {
+            if (queuedCommand.HasValue) return;
+            queuedCommand = weapon;
+            queuedAim = HasArgument("-smoke-test") || HasArgument("-death-preview") ? room.VisibleTargetScreenPosition() : PointerPosition();
+        }
 
         public void Select(Weapon weapon)
         {
@@ -128,7 +144,7 @@ namespace Mosquito.Runtime
             Game = new Simulation(settings == null ? null : settings.simulation, unchecked((ulong)DateTime.UtcNow.Ticks));
             Selected = Weapon.Hand; PendingTicks = 0; remainder = 0; lastMilestone = 0;
             InMenu = Paused = Recovering = SettingsOpen = false; queuedCommand = null; holdArmed = false;
-            room.ResetVisuals(); Status = "母蚊每 2 秒产卵，虫卵 1 秒后孵化。"; lastRealTime = Time.realtimeSinceStartupAsDouble;
+            room.ResetVisuals(); Status = "母蚊每 6 秒产卵，虫卵 3 秒后孵化。"; lastRealTime = Time.realtimeSinceStartupAsDouble;
             Save();
         }
         public void ContinueRun()
@@ -181,14 +197,16 @@ namespace Mosquito.Runtime
             bool save = false;
             foreach (var e in Game.Events)
             {
+                if (e.Type == SimEventType.EggKilled)
+                { room.CrushEgg(eggTarget); Status = "拍碎虫卵 1 枚 · 不再孵化"; audioFx.PlayAttack(Weapon.Hand, true); save = true; }
                 if (e.Type == SimEventType.Unlocked)
                 { Status = "已解锁" + GameHud.WeaponName(e.Weapon) + " · 按 " + ((int)e.Weapon + 1) + " 选择"; audioFx.PlayUnlock(); save = true; }
-                if (e.Type == SimEventType.Missed) { Status = "MISS · 手掌有 50% 的几率落空"; room.Attack(e); audioFx.PlayAttack(e.Weapon, false); }
+                if (e.Type == SimEventType.Missed) { Status = "没有击中蚊子。"; room.Attack(e, attackTargets); audioFx.PlayAttack(e.Weapon, false); }
                 if (e.Type == SimEventType.Killed)
                 {
                     Status = "清除 " + CountFormatter.Format(e.Count) + " 只";
                     if (e.Weapon == Weapon.Incense) { Status += " · 幸存虫卵 " + CountFormatter.Format(Game.BurstInitialEggs); save = true; }
-                    room.Attack(e); audioFx.PlayAttack(e.Weapon, true);
+                    room.Attack(e, attackTargets); audioFx.PlayAttack(e.Weapon, true);
                 }
                 if (e.Type == SimEventType.Ended) Status = Game.Adults == 0 ? "全部蚊子已清除。" : "繁殖已停止，剩余 " + CountFormatter.Format(Game.Male) + " 只公蚊。";
             }
@@ -199,18 +217,32 @@ namespace Mosquito.Runtime
 
         private IEnumerator CaptureRun()
         {
-            if (HasArgument("-smoke-test"))
+            if (HasArgument("-death-preview"))
+            {
+                yield return new WaitForEndOfFrame();
+                yield return new WaitForSecondsRealtime(1);
+                if (Paused) Resume();
+                float deadline = Time.realtimeSinceStartup + 120;
+                while (!Game.IsUnlocked(Weapon.Zapper) && Time.realtimeSinceStartup < deadline) yield return null;
+                Select(Weapon.Zapper); Queue(Weapon.Zapper);
+                while (Game.ZapperUses == 0 && Time.realtimeSinceStartup < deadline) yield return null;
+                yield return new WaitForSecondsRealtime(.18f);
+                if (room.ActiveDeathCount == 0) throw new InvalidOperationException("Death preview produced no falling mosquitoes.");
+            }
+            else if (HasArgument("-smoke-test"))
             {
                 // Let the first render finish before timing the unattended gameplay check.
                 // Resume a startup protection pause just as a player would, without disabling it.
                 yield return new WaitForEndOfFrame();
                 yield return new WaitForSecondsRealtime(1);
                 if (Paused) Resume();
-                float timeout = Time.realtimeSinceStartup + 45;
+                float timeout = Time.realtimeSinceStartup + 240;
                 while (!Game.IsUnlocked(Weapon.Hand) && Time.realtimeSinceStartup < timeout) yield return null;
                 Select(Weapon.Hand); Queue(Weapon.Hand);
                 while (!Game.IsUnlocked(Weapon.Zapper) && Time.realtimeSinceStartup < timeout) yield return null;
                 Select(Weapon.Zapper); Queue(Weapon.Zapper);
+                while (Game.ZapperUses == 0 && Time.realtimeSinceStartup < timeout) yield return null;
+                bool deathFeedback = room.ActiveDeathCount > 0;
                 while (!Game.IsUnlocked(Weapon.Incense) && Time.realtimeSinceStartup < timeout) yield return null;
                 Select(Weapon.Incense); Queue(Weapon.Incense);
                 yield return new WaitForSecondsRealtime(.7f);
@@ -226,7 +258,8 @@ namespace Mosquito.Runtime
                 string reportPath = Path.Combine(Path.GetDirectoryName(Argument("-capture")), "runtime-smoke.json");
                 Directory.CreateDirectory(Path.GetDirectoryName(reportPath));
                 File.WriteAllText(reportPath, JsonUtility.ToJson(new RuntimeSmokeReport {
-                    success = Game.HandAttempts > 0 && Game.ZapperUses > 0 && Game.IncenseUses > 0 && pausedCorrectly && saved && roundTrip,
+                    success = Game.HandAttempts > 0 && Game.ZapperUses > 0 && Game.IncenseUses > 0 && pausedCorrectly && saved && roundTrip && deathFeedback,
+                    deathFeedback = deathFeedback,
                     tick = Game.Tick, handAttempts = Game.HandAttempts, zapperUses = Game.ZapperUses, incenseUses = Game.IncenseUses,
                     pausedCorrectly = pausedCorrectly, saved = saved, roundTrip = roundTrip,
                     adults = Game.Adults.ToString(), eggs = Game.Eggs.ToString(), tickMilliseconds = LastTickMilliseconds
@@ -256,7 +289,7 @@ namespace Mosquito.Runtime
         [Serializable]
         private sealed class RuntimeSmokeReport
         {
-            public bool success, pausedCorrectly, saved, roundTrip;
+            public bool success, pausedCorrectly, saved, roundTrip, deathFeedback;
             public long tick, handAttempts, zapperUses, incenseUses;
             public string adults, eggs;
             public double tickMilliseconds;
