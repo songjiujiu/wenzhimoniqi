@@ -1,0 +1,6 @@
+{
+  "name": "Mosquito.Editor",
+  "rootNamespace": "Mosquito.Editor",
+  "references": ["Mosquito.Core", "Mosquito.Runtime", "Unity.RenderPipelines.Universal.Runtime", "Unity.TextMeshPro"],
+  "includePlatforms": ["Editor"]
+}

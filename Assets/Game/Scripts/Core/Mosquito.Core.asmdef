@@ -1,0 +1,5 @@
+{
+  "name": "Mosquito.Core",
+  "rootNamespace": "Mosquito.Core",
+  "noEngineReferences": true
+}

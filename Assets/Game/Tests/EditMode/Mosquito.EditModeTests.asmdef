@@ -1,0 +1,6 @@
+{
+  "name": "Mosquito.EditModeTests",
+  "references": ["Mosquito.Core", "Mosquito.Runtime"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

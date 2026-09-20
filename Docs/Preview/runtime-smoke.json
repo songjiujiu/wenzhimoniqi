@@ -1,0 +1,13 @@
+{
+    "success": true,
+    "pausedCorrectly": true,
+    "saved": true,
+    "roundTrip": true,
+    "tick": 345,
+    "handAttempts": 1,
+    "zapperUses": 1,
+    "incenseUses": 1,
+    "adults": "218",
+    "eggs": "0",
+    "tickMilliseconds": 0.0076
+}

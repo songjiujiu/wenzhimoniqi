@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95a126c121140ff4281f38d268913150, type: 3}
+  m_Name: GameSettings
+  m_EditorClassIdentifier: Mosquito.Runtime::Mosquito.Runtime.GameSettings
+  simulation:
+    tickMs: 50
+    startMale: 2
+    startFemale: 2
+    initialLayTicks: 20
+    layIntervalTicks: 20
+    firstLayTicks: 20
+    hatchTicks: 10
+    burstTicks: 10
+    smallBatchLimit: 1024
+    handUnlock: 10
+    zapperUnlock: 100
+    incenseUnlock: 1000
+    handCooldown: 6
+    zapperCooldown: 16
+    incenseCooldown: 200
+    zapperKills: 10
+  visualLimit: 300
+  masterVolume: 0.65
