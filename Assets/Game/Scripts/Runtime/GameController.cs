@@ -201,6 +201,11 @@ namespace Mosquito.Runtime
         {
             if (HasArgument("-smoke-test"))
             {
+                // Let the first render finish before timing the unattended gameplay check.
+                // Resume a startup protection pause just as a player would, without disabling it.
+                yield return new WaitForEndOfFrame();
+                yield return new WaitForSecondsRealtime(1);
+                if (Paused) Resume();
                 float timeout = Time.realtimeSinceStartup + 45;
                 while (!Game.IsUnlocked(Weapon.Hand) && Time.realtimeSinceStartup < timeout) yield return null;
                 Select(Weapon.Hand); Queue(Weapon.Hand);

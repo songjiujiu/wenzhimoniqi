@@ -3,11 +3,11 @@
     "pausedCorrectly": true,
     "saved": true,
     "roundTrip": true,
-    "tick": 655,
+    "tick": 734,
     "handAttempts": 1,
     "zapperUses": 1,
     "incenseUses": 1,
     "adults": "0",
-    "eggs": "192",
-    "tickMilliseconds": 0.003
+    "eggs": "208",
+    "tickMilliseconds": 0.0038
 }

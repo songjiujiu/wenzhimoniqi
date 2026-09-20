@@ -16,6 +16,7 @@ namespace Mosquito.Runtime
         private readonly List<Part> parts = new List<Part>();
         private readonly Matrix4x4[] matrices = new Matrix4x4[300];
         private readonly Vector3[] positions = new Vector3[300];
+        private readonly Vector3[] flightCenters = new Vector3[300];
         private readonly Quaternion[] rotations = new Quaternion[300];
         private readonly float[] phases = new float[300];
         private readonly float[] hiddenUntil = new float[300];
@@ -116,7 +117,31 @@ namespace Mosquito.Runtime
             smoke.GetComponent<ParticleSystemRenderer>().sharedMaterial = Mat("Smoke", new Color(.52f, .66f, .59f));
             smoke.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             BuildMosquitoMeshes();
-            for (int i = 0; i < phases.Length; i++) phases[i] = i * 2.399963f;
+            int sample = 1;
+            for (int i = 0; i < phases.Length; i++)
+            {
+                phases[i] = i * 2.399963f;
+                // Low-discrepancy samples fill the room even when only a few insects are visible.
+                // Keep centers clear of the HUD; independent local paths avoid a shared swarm center.
+                Vector3 center;
+                Vector3 viewport;
+                do
+                {
+                    center = new Vector3(Mathf.Lerp(-4.6f, 4.2f, SpreadSample(sample, 2)),
+                        Mathf.Lerp(1.45f, 4.1f, SpreadSample(sample, 3)),
+                        Mathf.Lerp(-2.5f, 2.6f, SpreadSample(sample, 5)));
+                    sample++;
+                    viewport = sceneCamera.WorldToViewportPoint(center);
+                } while (viewport.x < .08f || viewport.x > .76f || viewport.y < .29f || viewport.y > .78f);
+                flightCenters[i] = positions[i] = center;
+            }
+        }
+
+        private static float SpreadSample(int index, int radix)
+        {
+            float value = 0, fraction = 1f / radix;
+            while (index > 0) { value += index % radix * fraction; index /= radix; fraction /= radix; }
+            return value;
         }
 
         private void BuildMosquitoMeshes()
@@ -172,8 +197,8 @@ namespace Mosquito.Runtime
             for (int i = 0; i < population; i++)
             {
                 float p = phases[i], t = clock * (.45f + i % 7 * .045f);
-                positions[i] = new Vector3(Mathf.Sin(t + p) * (1.2f + i % 5 * .35f),
-                    1.9f + Mathf.Sin(t * 1.4f + p * 2) * .7f + i % 3 * .3f, Mathf.Cos(t * .8f + p) * 1.15f);
+                positions[i] = flightCenters[i] + new Vector3(Mathf.Sin(t + p) * .32f,
+                    Mathf.Sin(t * 1.4f + p * 2) * .22f, Mathf.Cos(t * .8f + p) * .30f);
                 rotations[i] = Quaternion.Euler(Mathf.Sin(t + p) * 14, (t + p) * Mathf.Rad2Deg, Mathf.Sin(t * 2 + p) * 15);
             }
             foreach (var part in parts)

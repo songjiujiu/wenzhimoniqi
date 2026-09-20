@@ -2,6 +2,8 @@
 
 从四只蚊子开始的 PC 单机沙盒原型。观察繁殖，解锁手掌、电蚊拍和蚊香，清掉成蚊，再看幸存虫卵回弹。
 
+0.1.2 将蚊子的出生与飞行位置分散到房间不同高度和前后区域，每只围绕独立位置飞行，避免全部挤在桌面上方。繁殖速度沿用 0.1.1。
+
 当前开发基于 [GDD v1.1](./蚊子游戏模拟器_游戏策划文档_GDD_v1.1_PC_Unity_Blender.md)。这是正在开发的原型，不代表 GDD 全部美术、性能和试玩目标已经验收。
 
 0.1.1 根据试玩反馈将繁殖周期延长一倍：母蚊每 2 秒产卵，虫卵 1 秒孵化，新生母蚊 2 秒后首次产卵。武器冷却不变。继续旧存档会将尚未完成的产卵、孵化和清场回弹剩余时间延长一倍，保留已有数量、纪录与武器冷却；此调整优先于 GDD v1.1 中的初始节奏数值。
@@ -32,7 +34,7 @@
 
 发给其他电脑时，运行 `.\Tools\Package.ps1`，发送生成在 `Builds/Releases` 中的完整 ZIP。接收方先右键“全部解压缩”，再运行文件夹里的 exe，无需安装 Unity 或 Blender。打包脚本包含 `UnityPlayer.dll`、游戏数据和 Mono 运行库，并排除开发调试目录。如果提示缺少 `UnityPlayer.dll`，先检查是否只复制了 exe 或没有完整解压。
 
-也可生成双击安装的单个 exe：安装 [Inno Setup](https://jrsoftware.org/isdl.php) 6.7.3 或更新版本后，运行 `.\Tools\Installer.ps1`（自定义位置使用 `-CompilerPath`）。输出为 `Builds/Releases/MosquitoObservatory-Setup-0.1.1-Windows-x64.exe`，包含完整游戏运行文件。安装向导支持中文、选择安装目录、桌面和开始菜单快捷方式，以及 Windows 应用列表卸载。默认安装到当前用户的 `%LOCALAPPDATA%\Programs\MosquitoObservatory`，无需管理员权限；卸载保留游戏存档。后续版本保持安装脚本中的 AppId 不变并更新 GameVersion，以覆盖升级同一安装。
+也可生成双击安装的单个 exe：安装 [Inno Setup](https://jrsoftware.org/isdl.php) 6.7.3 或更新版本后，运行 `.\Tools\Installer.ps1`（自定义位置使用 `-CompilerPath`）。输出为 `Builds/Releases/MosquitoObservatory-Setup-0.1.2-Windows-x64.exe`，包含完整游戏运行文件。安装向导支持中文、选择安装目录、桌面和开始菜单快捷方式，以及 Windows 应用列表卸载。默认安装到当前用户的 `%LOCALAPPDATA%\Programs\MosquitoObservatory`，无需管理员权限；卸载保留游戏存档。后续版本保持安装脚本中的 AppId 不变并更新 GameVersion，以覆盖升级同一安装。
 
 ## 操作
 
