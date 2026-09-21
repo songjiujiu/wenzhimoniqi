@@ -19,5 +19,6 @@
 *.blend2
 .DS_Store
 .tools-cache/
+__pycache__/
 Assets/Resources/PerformanceTestRun*.json*
 Assets/Resources.meta

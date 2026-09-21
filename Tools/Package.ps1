@@ -14,6 +14,7 @@ New-Item -ItemType Directory -Force -Path $gameRoot, $OutputDirectory | Out-Null
 Get-ChildItem -LiteralPath $buildRoot -Force | Where-Object {
     $_.Name -notlike '*_DoNotShip' -and $_.Extension -ne '.pdb'
 } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $gameRoot -Recurse }
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Installer\ThirdPartyNotices.txt') -Destination $gameRoot -Force
 $instructions = @'
 蚊群观察室 · Windows 64 位试玩版
 

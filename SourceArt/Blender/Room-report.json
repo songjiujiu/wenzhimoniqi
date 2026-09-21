@@ -1,0 +1,11 @@
+{
+  "triangles": 91516,
+  "material_groups": 21,
+  "editable_objects": 888,
+  "source": "SourceArt\\Blender\\Room.blend",
+  "export": "Assets\\Game\\Resources\\Models\\Room.fbx",
+  "style": "Reference-inspired warm plaster, walnut and oak study",
+  "floor_y": -0.2,
+  "back_wall_z": 3.875,
+  "left_wall_x": -5.875
+}

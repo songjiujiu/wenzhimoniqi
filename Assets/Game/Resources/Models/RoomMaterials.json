@@ -1,0 +1,340 @@
+{
+  "materials": [
+    {
+      "name": "Room_Wood_Walnut",
+      "color": [
+        0.8879999801516534,
+        0.6845000088214874,
+        0.49950001984834674,
+        1.0
+      ],
+      "texture": "Wood_Albedo",
+      "emission": 0,
+      "normal": "Wood_Normal",
+      "mask": "Wood_MetallicSmoothness",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_Plaster",
+      "color": [
+        0.8399999737739563,
+        0.8100000023841858,
+        0.75,
+        1.0
+      ],
+      "texture": "Plaster_Albedo",
+      "emission": 0,
+      "normal": "Plaster_Normal",
+      "mask": "Plaster_MetallicSmoothness",
+      "normalStrength": 0.45,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_Wood_Floor0",
+      "color": [
+        1.2949999779462815,
+        1.1100000441074371,
+        0.8694999977946282,
+        1.0
+      ],
+      "texture": "Wood_Albedo",
+      "emission": 0,
+      "normal": "Wood_Normal",
+      "mask": "Wood_MetallicSmoothness",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_Wood_Floor1",
+      "color": [
+        1.3690000176429749,
+        1.18030002117157,
+        0.9342499911785126,
+        1.0
+      ],
+      "texture": "Wood_Albedo",
+      "emission": 0,
+      "normal": "Wood_Normal",
+      "mask": "Wood_MetallicSmoothness",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_Wood_Floor2",
+      "color": [
+        1.4429999470710755,
+        1.2505999982357026,
+        0.9990000396966935,
+        1.0
+      ],
+      "texture": "Wood_Albedo",
+      "emission": 0,
+      "normal": "Wood_Normal",
+      "mask": "Wood_MetallicSmoothness",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_Wood_Floor3",
+      "color": [
+        1.516999986767769,
+        1.3208999752998352,
+        1.0637499779462816,
+        1.0
+      ],
+      "texture": "Wood_Albedo",
+      "emission": 0,
+      "normal": "Wood_Normal",
+      "mask": "Wood_MetallicSmoothness",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_Fabric_Rug",
+      "color": [
+        0.6399999856948853,
+        0.6899999976158142,
+        0.7300000190734863,
+        1.0
+      ],
+      "texture": "Fabric_Albedo",
+      "emission": 0,
+      "normal": "Fabric_Normal",
+      "mask": "Fabric_MetallicSmoothness",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_Fabric_Linen",
+      "color": [
+        1.0,
+        1.0,
+        0.9800000190734863,
+        1.0
+      ],
+      "texture": "Fabric_Albedo",
+      "emission": 0,
+      "normal": "Fabric_Normal",
+      "mask": "Fabric_MetallicSmoothness",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_Sky",
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Window_Night",
+      "emission": 0.18,
+      "normal": "",
+      "mask": "",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.6499999761581421
+    },
+    {
+      "name": "Room_BlackMetal",
+      "color": [
+        0.04500000178813934,
+        0.0430000014603138,
+        0.03999999910593033,
+        1.0
+      ],
+      "texture": "",
+      "emission": 0,
+      "normal": "",
+      "mask": "",
+      "normalStrength": 0.75,
+      "metallic": 0.550000011920929,
+      "roughness": 0.30000001192092896
+    },
+    {
+      "name": "Room_Brass",
+      "color": [
+        0.46000000834465027,
+        0.3100000023841858,
+        0.12999999523162842,
+        1.0
+      ],
+      "texture": "",
+      "emission": 0,
+      "normal": "",
+      "mask": "",
+      "normalStrength": 0.75,
+      "metallic": 0.699999988079071,
+      "roughness": 0.27000001072883606
+    },
+    {
+      "name": "Room_Wood_Oak",
+      "color": [
+        1.516999986767769,
+        1.3134999603033066,
+        1.054499986767769,
+        1.0
+      ],
+      "texture": "Wood_Albedo",
+      "emission": 0,
+      "normal": "Wood_Normal",
+      "mask": "Wood_MetallicSmoothness",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_Paper",
+      "color": [
+        0.7799999713897705,
+        0.7400000095367432,
+        0.6200000047683716,
+        1.0
+      ],
+      "texture": "",
+      "emission": 0,
+      "normal": "",
+      "mask": "",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.8500000238418579
+    },
+    {
+      "name": "Room_BookBlue",
+      "color": [
+        0.09000000357627869,
+        0.13500000536441803,
+        0.1899999976158142,
+        1.0
+      ],
+      "texture": "",
+      "emission": 0,
+      "normal": "",
+      "mask": "",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_BookGreen",
+      "color": [
+        0.10999999940395355,
+        0.1599999964237213,
+        0.15000000596046448,
+        1.0
+      ],
+      "texture": "",
+      "emission": 0,
+      "normal": "",
+      "mask": "",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_Ink",
+      "color": [
+        0.07500000298023224,
+        0.09000000357627869,
+        0.10499999672174454,
+        1.0
+      ],
+      "texture": "",
+      "emission": 0,
+      "normal": "",
+      "mask": "",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_Ochre",
+      "color": [
+        0.3100000023841858,
+        0.14000000059604645,
+        0.05999999865889549,
+        1.0
+      ],
+      "texture": "",
+      "emission": 0,
+      "normal": "",
+      "mask": "",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_Ceramic",
+      "color": [
+        0.800000011920929,
+        0.7799999713897705,
+        0.699999988079071,
+        1.0
+      ],
+      "texture": "",
+      "emission": 0,
+      "normal": "",
+      "mask": "",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.30000001192092896
+    },
+    {
+      "name": "Room_Soil",
+      "color": [
+        0.03500000014901161,
+        0.02500000037252903,
+        0.014000000432133675,
+        1.0
+      ],
+      "texture": "",
+      "emission": 0,
+      "normal": "",
+      "mask": "",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.5799999833106995
+    },
+    {
+      "name": "Room_Leaf",
+      "color": [
+        0.07500000298023224,
+        0.18000000715255737,
+        0.0430000014603138,
+        1.0
+      ],
+      "texture": "",
+      "emission": 0,
+      "normal": "",
+      "mask": "",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.44999998807907104
+    },
+    {
+      "name": "Room_LeafLight",
+      "color": [
+        0.1599999964237213,
+        0.28999999165534973,
+        0.06499999761581421,
+        1.0
+      ],
+      "texture": "",
+      "emission": 0,
+      "normal": "",
+      "mask": "",
+      "normalStrength": 0.75,
+      "metallic": 0.0,
+      "roughness": 0.47999998927116394
+    }
+  ]
+}

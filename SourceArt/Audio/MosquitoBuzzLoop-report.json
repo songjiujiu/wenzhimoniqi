@@ -1,0 +1,17 @@
+{
+  "source": "https://freesound.org/people/MarianaRA/sounds/477794/",
+  "author": "MarianaRA",
+  "license": "CC0 1.0",
+  "download": "https://cdn.freesound.org/previews/477/477794_3472612-hq.mp3",
+  "source_format": "Public high-quality MP3 preview of the original recording",
+  "excerpt_start_seconds": 34,
+  "excerpt_seconds": 8,
+  "overlap_seconds": 0.16,
+  "output_seconds": 7.84,
+  "sample_rate": 44100,
+  "channels": 1,
+  "rms_dbfs": -20.51527958934009,
+  "peak": 0.72,
+  "seam_delta": 0.009916664929022628,
+  "processing": "Mono, 180 Hz high-pass, 3500 Hz low-pass, light FFT denoise, DC removal, loop crossfade, peak -2.85 dBFS. No pitch shift or synthetic tone."
+}

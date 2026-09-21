@@ -1,0 +1,26 @@
+{
+  "Hand": {
+    "triangles": 10072,
+    "parts": 5
+  },
+  "Zapper": {
+    "triangles": 3216,
+    "parts": 46
+  },
+  "Incense": {
+    "triangles": 5620,
+    "parts": 188
+  },
+  "LuckyCat": {
+    "triangles": 3664,
+    "parts": 18
+  },
+  "Tower": {
+    "triangles": 1600,
+    "parts": 40
+  },
+  "Mosquito": {
+    "triangles": 8252,
+    "parts": 58
+  }
+}

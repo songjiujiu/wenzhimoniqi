@@ -25,7 +25,8 @@ namespace Mosquito.Runtime
         private readonly Dictionary<TMP_Text, float> fontSizes = new Dictionary<TMP_Text, float>();
         private TMP_Text adult, females, males, eggs, rate, kills, bestClear, status, time, phase, record, modalTitle, modalBody, milestone;
         private readonly TMP_Text[] weaponTitles = new TMP_Text[3], weaponDetails = new TMP_Text[3];
-        private readonly Image[] weaponPanels = new Image[3], progress = new Image[3];
+        private readonly Image[] progress = new Image[3];
+        private bool buildingGameplayHud;
         private Button primary, secondary, settingsButton, quitButton;
         private TMP_Text primaryText, secondaryText;
         private bool confirmRestart;
@@ -47,7 +48,8 @@ namespace Mosquito.Runtime
             events.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();
             events.GetComponent<EventSystem>().sendNavigationEvents = false;
 
-            var header = Box(canvasRoot, "Telemetry", 0, 0, 1920, 192, ink);
+            buildingGameplayHud = true;
+            var header = Rect(canvasRoot, "Telemetry", 0, 0, 1920, 192);
             Text(header, "MOSQUITO  /  OBSERVATORY", 60, 25, 520, 32, 20, amber);
             Text(header, "蚊群观察室", 60, 70, 430, 53, 39, ivory);
             Text(header, "无限繁殖 · 清场实验", 62, 133, 420, 30, 19, muted);
@@ -59,9 +61,9 @@ namespace Mosquito.Runtime
             Divider(header, 1205, 40, 1, 110);
             Text(header, "当前虫卵", 1250, 33, 240, 28, 18, muted);
             eggs = Text(header, "0", 1247, 77, 220, 65, 44, ivory);
-            Button(header, "暂停  ESC", 1660, 60, 198, 61, () => game.Pause("模拟已暂停"), line);
+            Button(header, "暂停  ESC", 1660, 60, 198, 61, () => game.Pause("模拟已暂停"), Color.clear);
 
-            var side = Box(canvasRoot, "Run journal", 1510, 232, 350, 520, panel);
+            var side = Rect(canvasRoot, "Run journal", 1510, 232, 350, 520);
             Text(side, "本局档案", 28, 25, 285, 39, 26, ivory);
             Divider(side, 28, 83, 294, 1);
             Text(side, "累计击杀", 28, 109, 280, 30, 18, muted);
@@ -74,22 +76,24 @@ namespace Mosquito.Runtime
             phase = Text(canvasRoot, "● 观察中", 62, 235, 640, 40, 22, amber);
             Text(canvasRoot, "蚊子或虫卵较多时，画面仅展示部分个体", 64, 284, 810, 28, 17, muted);
 
-            var bottom = Box(canvasRoot, "Weapon tray", 0, 830, 1920, 250, ink);
+            var bottom = Rect(canvasRoot, "Weapon tray", 0, 830, 1920, 250);
             status = Text(bottom, "", 64, 18, 1750, 37, 23, ivory);
             for (int i = 0; i < 3; i++)
             {
                 int index = i;
-                var button = Button(bottom, "", 60 + i * 610, 80, 582, 116, () => game.Select((Weapon)index), panel);
-                var rect = button.GetComponent<RectTransform>(); weaponPanels[i] = button.GetComponent<Image>();
+                var button = Button(bottom, "", 60 + i * 610, 80, 500, 104, () => game.Select((Weapon)index), Color.clear);
+                var rect = button.GetComponent<RectTransform>();
                 Text(rect, "0" + (i + 1), 22, 18, 52, 47, 31, muted);
                 weaponTitles[i] = Text(rect, WeaponName((Weapon)i), 92, 16, 325, 40, 27, ivory);
                 weaponDetails[i] = Text(rect, "", 93, 66, 405, 28, 17, muted);
-                progress[i] = Box(rect, "Cooldown", 0, 111, 582, 5, amber).GetComponent<Image>();
+                progress[i] = Box(rect, "Cooldown", 22, 101, 460, 3, amber).GetComponent<Image>();
             }
             Text(bottom, "1 / 2 / 3 选择武器     点击场景或 SPACE 使用     按住左键连续拍击", 64, 211, 1700, 26, 17, muted);
             milestone = Text(canvasRoot, "", 520, 735, 880, 60, 30, amber); milestone.alignment = TextAlignmentOptions.Center;
 
+            buildingGameplayHud = false;
             overlay = Box(canvasRoot, "Modal backdrop", 0, 0, 1920, 1080, new Color(.025f, .05f, .065f, .82f));
+            overlay.GetComponent<Image>().raycastTarget = true;
             modal = Box(overlay, "Dialog", 570, 170, 780, 738, panel);
             Text(modal, "MOSQUITO  /  A SMALL EXPERIMENT", 50, 40, 675, 35, 18, amber);
             modalTitle = Text(modal, "从四只开始。", 46, 103, 690, 85, 56, ivory);
@@ -157,10 +161,10 @@ namespace Mosquito.Runtime
             {
                 var weapon = (Weapon)i; bool unlocked = sim != null && sim.IsUnlocked(weapon);
                 bool selected = unlocked && game.Selected == weapon;
-                weaponPanels[i].color = selected ? new Color(.18f, .24f, .23f) : panel;
-                weaponTitles[i].color = unlocked ? ivory : muted;
+                weaponTitles[i].color = selected ? amber : unlocked ? ivory : muted;
                 float fraction = unlocked ? 1 - sim.RemainingCooldown(weapon) / (float)sim.Config.Cooldown(weapon) : 0;
-                progress[i].rectTransform.sizeDelta = new Vector2(582 * fraction, 5);
+                progress[i].rectTransform.sizeDelta = new Vector2(460 * fraction, 3);
+                progress[i].color = selected ? amber : new Color(ivory.r, ivory.g, ivory.b, .35f);
                 weaponDetails[i].text = !unlocked ? "本局峰值 " + new[] { "10", "100", "1,000" }[i] + " 只解锁" :
                     sim.RemainingCooldown(weapon) > 0 ? "冷却 " + (sim.RemainingCooldown(weapon) * .05f).ToString("F1") + "s" :
                     weapon == Weapon.Hand ? "蚊子或虫卵 · 单个必中" : weapon == Weapon.Zapper ? "指针范围内最多 10 只" : "清除成蚊 · 保留虫卵";
@@ -204,12 +208,23 @@ namespace Mosquito.Runtime
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1); rect.anchoredPosition = new Vector2(x, -y); rect.sizeDelta = new Vector2(w, h); return rect;
         }
         private RectTransform Box(Transform parent, string name, float x, float y, float w, float h, Color color)
-        { var rect = Rect(parent, name, x, y, w, h); rect.gameObject.AddComponent<Image>().color = color; return rect; }
+        {
+            var rect = Rect(parent, name, x, y, w, h);
+            var image = rect.gameObject.AddComponent<Image>(); image.color = color;
+            image.raycastTarget = false;
+            return rect;
+        }
         private void Divider(Transform parent, float x, float y, float w, float h) => Box(parent, "Divider", x, y, w, h, line);
         private TMP_Text Text(Transform parent, string value, float x, float y, float w, float h, float size, Color color)
         {
             var label = Rect(parent, value.Length > 22 ? value.Substring(0, 22) : value, x, y, w, h).gameObject.AddComponent<TextMeshProUGUI>();
             label.font = font; label.text = value; label.fontSize = size; label.color = color;
+            if (buildingGameplayHud)
+            {
+                // Keep floating text legible against both the light floor and dark walls.
+                label.outlineColor = new Color(.015f, .025f, .03f, .9f);
+                label.outlineWidth = .18f;
+            }
             label.raycastTarget = false; label.textWrappingMode = TextWrappingModes.NoWrap; label.overflowMode = TextOverflowModes.Ellipsis;
             label.alignment = TextAlignmentOptions.MidlineLeft; fontSizes.Add(label, size); return label;
         }
@@ -217,14 +232,22 @@ namespace Mosquito.Runtime
         {
             var rect = Box(parent, "Button " + value, x, y, w, h, color);
             var button = rect.gameObject.AddComponent<Button>(); button.targetGraphic = rect.GetComponent<Image>();
+            button.targetGraphic.raycastTarget = true;
             var colors = button.colors; colors.highlightedColor = new Color(1.12f, 1.12f, 1.06f); colors.pressedColor = new Color(.78f, .85f, .82f); colors.disabledColor = new Color(.4f, .4f, .4f); button.colors = colors;
             button.onClick.AddListener(() => action());
-            var label = Text(rect, value, 18, 4, w - 36, h - 8, 23, ivory); label.alignment = TextAlignmentOptions.Center; return button;
+            var label = Text(rect, value, 18, 4, w - 36, h - 8, 23, ivory); label.alignment = TextAlignmentOptions.Center;
+            if (buildingGameplayHud && value.Length > 0)
+            {
+                button.targetGraphic = label;
+                colors.highlightedColor = amber; button.colors = colors;
+            }
+            return button;
         }
         private void Slider(Transform parent, string value, float y, float initial, Action<float> change)
         {
             Text(parent, value, 50, y, 235, 42, 24, ivory);
             var area = Box(parent, value + " slider", 300, y + 4, 620, 35, line);
+            area.GetComponent<Image>().raycastTarget = true;
             var fill = Box(area, "Fill", 0, 0, 620, 35, amber);
             var slider = area.gameObject.AddComponent<UnityEngine.UI.Slider>(); slider.fillRect = fill;
             slider.minValue = 0; slider.maxValue = 1; slider.value = initial;

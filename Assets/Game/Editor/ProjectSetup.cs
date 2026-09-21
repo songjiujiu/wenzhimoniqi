@@ -49,6 +49,8 @@ namespace Mosquito.Editor
             var graphics = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/GraphicsSettings.asset")[0]);
             var included = graphics.FindProperty("m_AlwaysIncludedShaders");
             included.ClearArray();
+            // Lit variants are collected from the authored room and weapon materials.
+            // Keeping every Lit variant here greatly inflates Windows shader compilation.
             foreach (string name in new[] { "Mosquito/InstancedLit", "TextMeshPro/Distance Field", "TextMeshPro/Mobile/Distance Field", "UI/Default" })
             {
                 var shader = Shader.Find(name);
@@ -66,7 +68,7 @@ namespace Mosquito.Editor
             var handler = player.FindProperty("activeInputHandler"); if (handler != null) handler.intValue = 1;
             player.ApplyModifiedPropertiesWithoutUndo();
             PlayerSettings.companyName = "Songjiujiu"; PlayerSettings.productName = "Mosquito Observatory";
-            PlayerSettings.bundleVersion = "0.1.0";
+            PlayerSettings.bundleVersion = "0.1.4";
             PlayerSettings.defaultScreenWidth = 1600; PlayerSettings.defaultScreenHeight = 900;
             PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
             PlayerSettings.resizableWindow = true; PlayerSettings.runInBackground = true;

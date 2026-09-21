@@ -12,16 +12,29 @@ namespace Mosquito.Runtime
         {
             buzz = gameObject.AddComponent<AudioSource>(); effects = gameObject.AddComponent<AudioSource>();
             buzz.loop = true; buzz.spatialBlend = effects.spatialBlend = 0;
-            buzz.clip = Tone("Soft mosquito ambience", 1, 220, .12f, false);
-            buzz.volume = 0; buzz.Play();
+            buzz.playOnAwake = false;
+            buzz.clip = Resources.Load<AudioClip>("Audio/MosquitoBuzzLoop");
+            if (buzz.clip == null) Debug.LogError("Missing recorded mosquito audio: Audio/MosquitoBuzzLoop");
+            buzz.volume = 0;
             hand = Tone("Palm impact", .12f, 110, .7f, true);
             miss = Tone("Palm miss", .10f, 350, .15f, true);
             zapper = Tone("Electric snap", .20f, 880, .5f, true);
             incense = Tone("Incense sweep", .55f, 75, .4f, true);
             unlock = Tone("Unlock", .25f, 660, .22f, false);
         }
-        public void SetBuzz(float intensity, float master, float level)
-        { buzz.volume = Mathf.Lerp(buzz.volume, intensity * level, Time.unscaledDeltaTime * 5); buzz.pitch = 1 + intensity * .35f; }
+        public void SetBuzz(float intensity, float level)
+        {
+            // Master volume is applied once by AudioListener. Keep the recording's
+            // natural pitch, and silence it immediately on pause/menu/no adults.
+            if (intensity <= 0 || level <= 0 || buzz.clip == null)
+            {
+                buzz.volume = 0; if (buzz.isPlaying) buzz.Pause(); return;
+            }
+            if (!buzz.isPlaying) { buzz.UnPause(); if (!buzz.isPlaying) buzz.Play(); }
+            float target = Mathf.Lerp(.25f, .70f, Mathf.Clamp01(intensity)) * Mathf.Clamp01(level);
+            buzz.volume = Mathf.Lerp(buzz.volume, target, 1 - Mathf.Exp(-5 * Time.unscaledDeltaTime));
+            buzz.pitch = 1;
+        }
         public void PlayAttack(Weapon weapon, bool hit) => effects.PlayOneShot(!hit ? miss : weapon == Weapon.Hand ? hand : weapon == Weapon.Zapper ? zapper : incense, .45f);
         public void PlayUnlock() => effects.PlayOneShot(unlock, .5f);
         private static AudioClip Tone(string name, float seconds, float frequency, float amplitude, bool noise)

@@ -1,5 +1,13 @@
 # 蚊群观察室 · Mosquito Observatory
 
+**查看最新模型：双击 `Tools/OpenGame.cmd` 打开本工程，在 `Observatory` 场景点击播放。** 房间、家具和桌面摆件已保存进场景，编辑模式也能看到；运行后加载新蚊子，手掌、电蚊拍和蚊香使用 Blender 模型。已有 0.1.2 安装包不包含这次源码与模型更新。
+
+书房已做一轮写实化：真实木纹/灰泥/织物材质、法线与粗糙度、弧形椅背、调整后的桌椅比例、曲面叶片、窗外远景，以及统一的软阴影和室内光照。若编辑器仍停留在旧场景，退出播放后重新打开 `Assets/Game/Scenes/Observatory.unity`；后续自行修改模型可用 `Mosquito/刷新书房模型与材质` 更新场景。贴图来源与生成说明见 `SourceArt/TextureSources.md`。
+
+当前为正面水平镜头的夜间书房：窗外夜景，室内暖色灯光和桌灯。蚊子显示尺寸缩至原来的 45%，死亡反馈使用相同比例。嗡鸣使用 MarianaRA 在 Freesound 发布的真实录音（CC0），经降噪、剪辑和循环衔接后接入；设置中的“嗡鸣强度”可调整，暂停或没有成蚊时静音。音频出处、处理过程和原文件见 `SourceArt/Audio/README.md`。
+
+参考图模型源文件：`SourceArt/Blender/Room.blend`（房间家具）和 `SourceArt/Blender/ReferenceAssets.blend`（蚊子、手掌、电拍、蚊香、招财猫、铁塔）。模型与玩法共 62 项 EditMode 测试，以及真实场景中的 PlayMode 显示测试通过。运行截图位于 `Docs/Preview/reference-gameplay.png`、`reference-hand.png`、`reference-zapper.png`、`reference-incense.png`。这些是参考图的简化游戏模型，不代表照片级复刻。
+
 从四只蚊子开始的 PC 单机沙盒原型。观察繁殖，解锁手掌、电蚊拍和蚊香，清掉成蚊，再看幸存虫卵回弹。
 
 虫卵现在以浅色卵粒随机显示在实际地面和墙壁表面，贴面静止，避开窗户、书架和家具占用区域。每批卵按实际孵化时间移除，蚊香保留虫卵；数量较多时最多显示 300 个代表，HUD 仍显示真实总数。显示随机数与繁殖模拟独立。

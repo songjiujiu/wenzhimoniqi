@@ -4,7 +4,7 @@
 #ifndef ReleaseRoot
   #define ReleaseRoot "..\..\Builds\Releases"
 #endif
-#define GameVersion "0.1.3"
+#define GameVersion "0.1.4"
 
 [Setup]
 AppId={{218B8466-634B-4B60-9A4B-A33CDF929775}
@@ -46,6 +46,7 @@ english.LaunchGame=Launch Mosquito Observatory
 Name: "desktopicon"; Description: "{cm:DesktopShortcut}"
 
 [Files]
+Source: "ThirdPartyNotices.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildRoot}\*"; DestDir: "{app}"; Excludes: "*_DoNotShip,*_DoNotShip\*,*.pdb"; Flags: ignoreversion recursesubdirs
 
 [Icons]

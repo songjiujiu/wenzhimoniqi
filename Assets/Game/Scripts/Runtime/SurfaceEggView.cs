@@ -25,6 +25,7 @@ namespace Mosquito.Runtime
         private Material material;
         private long lastTick = -1;
         private string runId;
+        private bool studyRoom;
         public int VisibleCount => eggs.Count;
 
         public bool FindTarget(UnityEngine.Vector2 pointer, out int index, out long due, out float distance)
@@ -47,8 +48,9 @@ namespace Mosquito.Runtime
             return position;
         }
 
-        public void Initialize(Transform floorSurface, Transform backSurface, Transform leftSurface, Camera camera)
+        public void Initialize(Transform floorSurface, Transform backSurface, Transform leftSurface, Camera camera, bool useStudyRoom = false)
         {
+            studyRoom = useStudyRoom;
             floor = floorSurface; backWall = backSurface; leftWall = leftSurface; cameraView = camera;
             var vertices = new List<Vector3>(); var triangles = new List<int>();
             const int rings = 8, sides = 12;
@@ -90,16 +92,24 @@ namespace Mosquito.Runtime
                     local = new Vector3(Mathf.Lerp(-.36f, .36f, a), .5f, Mathf.Lerp(-.3f, .27f, b));
                     Vector3 world = surface.TransformPoint(local);
                     // Bare floor only: avoid the rug, furniture footprint and plant pot.
+                    if (studyRoom && IsStudyFurniture(world, false)) continue;
+                    if (!studyRoom)
+                    {
                     if (Mathf.Abs(world.x) < 3.65f && world.z > -3.65f && world.z < 1.65f) continue;
                     if (Mathf.Abs(world.x - 3.5f) < .65f && Mathf.Abs(world.z - 1.7f) < .65f) continue;
+                    }
                 }
                 else if (face == 1)
                 {
                     surface = backWall; normal = Vector3.back;
                     local = new Vector3(Mathf.Lerp(-.36f, .36f, a), Mathf.Lerp(-.37f, .23f, b), -.5f);
                     Vector3 world = surface.TransformPoint(local);
+                    if (studyRoom && IsStudyFurniture(world, true)) continue;
+                    if (!studyRoom)
+                    {
                     if (world.x > -3.75f && world.x < -.65f && world.y > 1.55f && world.y < 4.65f) continue;
                     if (world.x > 1.4f && world.x < 4.2f && world.y > 2.55f && world.y < 3.7f) continue;
+                    }
                 }
                 else
                 {
@@ -111,6 +121,19 @@ namespace Mosquito.Runtime
                 if (viewport.z > 0 && viewport.x > .05f && viewport.x < .77f && viewport.y > .25f && viewport.y < .79f) return true;
             }
             matrix = Matrix4x4.identity; return false; // Never fall back to an airborne point.
+        }
+
+        public static bool IsStudyFurniture(Vector3 point, bool backWall)
+        {
+            if (backWall)
+                return (point.x > -4.4f && point.x < -.7f && point.y > 2.05f && point.y < 5.60f) || // Window.
+                    (point.x > .82f && point.x < 3.78f && point.y < 5.5f) || // Bookcase and trailing plant.
+                    (point.x > -.44f && point.x < .64f && point.y > 2.70f && point.y < 4.30f) || // Framed print.
+                    (point.x > -4.4f && point.x < .6f && point.y < 1.7f); // Desk behind which eggs would be hidden.
+            return (point.x > -5.0f && point.x < 1.8f && point.z > -2.05f && point.z < 2.60f) || // Rug/chair.
+                (point.x > -4.4f && point.x < .6f && point.z > 1.0f && point.z < 3.4f) || // Desk.
+                (point.x > .82f && point.x < 3.78f && point.z > 2.60f) || // Bookcase.
+                (Mathf.Abs(point.x - .90f) < .55f && Mathf.Abs(point.z - 2.46f) < .55f); // Planter.
         }
 
         public void Sync(Simulation game, bool menu)

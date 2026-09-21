@@ -1,5 +1,5 @@
 {
   "name": "Mosquito.Runtime",
   "rootNamespace": "Mosquito.Runtime",
-  "references": ["Mosquito.Core", "Unity.InputSystem", "Unity.TextMeshPro", "Unity.ugui", "Unity.RenderPipelines.Universal.Runtime"]
+  "references": ["Mosquito.Core", "Unity.InputSystem", "Unity.TextMeshPro", "Unity.ugui", "Unity.RenderPipelines.Universal.Runtime", "Unity.RenderPipelines.Core.Runtime"]
 }

@@ -1,0 +1,18 @@
+Mosquito Observatory - Third-party asset credits
+
+Mosquito Buzzing, by MarianaRA
+https://freesound.org/people/MarianaRA/sounds/477794/
+License: CC0 1.0
+https://creativecommons.org/publicdomain/zero/1.0/
+The included loop is an excerpt of the public HQ MP3 recording, converted
+to mono, filtered, lightly denoised and crossfaded for looping.
+
+Study room PBR textures, by ambientCG
+Wood051: https://ambientcg.com/a/Wood051
+Plaster001: https://ambientcg.com/a/Plaster001
+Fabric030: https://ambientcg.com/a/Fabric030
+License: CC0 1.0
+https://docs.ambientcg.com/license/
+Roughness maps were converted to Unity smoothness maps.
+
+The distant window background was generated and edited with imagegen.

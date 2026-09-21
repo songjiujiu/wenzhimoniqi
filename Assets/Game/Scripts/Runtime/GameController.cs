@@ -103,8 +103,8 @@ namespace Mosquito.Runtime
             }
             room.SetPopulation(Game, settings == null ? 300 : settings.visualLimit, InMenu);
             room.Animate(!Paused && !InMenu, Profile.reducedFlash, Profile.shake);
-            audioFx.SetBuzz(Game == null || InMenu || Paused || Game.Phase == RunPhase.ReproductionEnded ? 0 :
-                Mathf.Clamp01((float)BigInteger.Log10(BigInteger.Max(1, Game.Adults)) / 6f), Profile.volume, Profile.buzzVolume);
+            audioFx.SetBuzz(Game == null || InMenu || Paused || Game.Phase == RunPhase.ReproductionEnded || Game.Adults.IsZero ? 0 :
+                .2f + .8f * Mathf.Clamp01((float)BigInteger.Log10(BigInteger.Max(1, Game.Adults)) / 6f), Profile.buzzVolume);
             hud.Refresh();
         }
 
